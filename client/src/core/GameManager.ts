@@ -1,33 +1,31 @@
 import type { Game } from './Game';
-import { findCharacter, ROSTER, type CharacterDefinition } from '../characters/roster';
+import { findCharacter } from '../characters/roster';
 import { MainMenuScene, type MenuView } from '../scenes/MainMenuScene';
 import { PlaygroundScene } from '../scenes/PlaygroundScene';
-import { MinigameScene } from '../scenes/MinigameScene';
+import { MinigameScene, type ResultExtras } from '../scenes/MinigameScene';
 import { LobbyScene } from '../scenes/LobbyScene';
+import { StandingsScene } from '../scenes/StandingsScene';
+import { PodiumScene } from '../scenes/PodiumScene';
 import { findMinigame } from '../minigames/registry';
-import type { MinigameDefinition } from '../minigames/types';
+import type { MinigameDefinition, MinigameResult } from '../minigames/types';
 import { PartySession } from '../multiplayer/PartySession';
 import { createMinigameNetwork } from '../multiplayer/minigameNetwork';
 import { savePlayer } from '../multiplayer/partyApi';
-import type { RoundInfo } from '../multiplayer/types';
+import type { RoundInfo, RoundOutcome } from '../multiplayer/types';
+import { startDailyRun, startRun, submitRun, type RunInfo } from '../online/onlineApi';
+import { displayName, loadProfile, saveProfile, type LocalProfile } from '../online/profile';
 import { randomSeed } from '../utils/random';
-import { readStorage, writeStorage } from '../utils/storage';
-
-const CHARACTER_KEY = 'party-panic.character';
-const NAME_KEY = 'party-panic.name';
 
 /**
  * Application flow: decides which scene is shown and holds the player's
- * local choices and party session. Scenes never create other scenes;
- * they call back here.
+ * profile and party session. Scenes never create other scenes; they call
+ * back here.
  */
 export class GameManager {
-    private character: CharacterDefinition;
+    private readonly profile: LocalProfile = loadProfile();
     private party: PartySession | null = null;
 
-    constructor(private readonly game: Game) {
-        this.character = findCharacter(readStorage(CHARACTER_KEY, ROSTER[0].id));
-    }
+    constructor(private readonly game: Game) {}
 
     async start(): Promise<void> {
         // Dev shortcuts: ?scene=freeplay or ?scene=<minigame-id>[&seed=n] skip the title screen.
@@ -42,7 +40,7 @@ export class GameManager {
 
         if (minigame) {
             const seed = Number.parseInt(params.get('seed') ?? '', 10);
-            this.startSolo(minigame, Number.isFinite(seed) ? seed : randomSeed());
+            void this.startSolo(minigame, Number.isFinite(seed) ? seed : undefined);
             return;
         }
 
@@ -60,26 +58,51 @@ export class GameManager {
     showMainMenu(view: MenuView = 'main'): void {
         void this.game.scenes.switchTo(
             new MainMenuScene(this.game, {
-                character: this.character,
+                profile: this.profile,
                 view,
-                defaultName: readStorage(NAME_KEY, ''),
-                onSelectCharacter: (character) => this.selectCharacter(character),
+                onProfileChange: (profile) => saveProfile(profile),
                 onFreePlay: () => this.startFreePlay(),
-                onPlayMinigame: (minigame) => this.startSolo(minigame),
+                onPlayMinigame: (minigame) => void this.startSolo(minigame),
+                onPlayDaily: (minigame) => this.startDaily(minigame),
                 onCreateParty: (name) => this.openParty(name, null),
                 onJoinParty: (name, code) => this.openParty(name, code),
             }),
         );
     }
 
-    startSolo(minigame: MinigameDefinition, seed = randomSeed()): void {
+    /** Solo Arcade. Uses a server run (seed + leaderboard) when online, a local seed otherwise. */
+    async startSolo(minigame: MinigameDefinition, fixedSeed?: number): Promise<void> {
+        const [factory, run] = await Promise.all([minigame.load(), fixedSeed === undefined ? startRun(this.profile, minigame.id) : Promise.resolve(null)]);
+
         void this.game.scenes.switchTo(
             new MinigameScene(this.game, {
                 definition: minigame,
-                character: this.character,
-                seed,
-                onReplay: () => this.startSolo(minigame),
+                factory,
+                character: this.profile.character,
+                hat: this.profile.hat,
+                seed: fixedSeed ?? run?.seed ?? randomSeed(),
+                resultExtras: run ? this.leaderboardExtras(run) : undefined,
+                onReplay: () => void this.startSolo(minigame, fixedSeed),
                 onExit: () => this.showMainMenu('arcade'),
+            }),
+        );
+    }
+
+    /** Daily Challenge: everyone plays the same seed; it needs the server. */
+    async startDaily(minigame: MinigameDefinition): Promise<void> {
+        const [factory, run] = await Promise.all([minigame.load(), startDailyRun(this.profile)]);
+
+        void this.game.scenes.switchTo(
+            new MinigameScene(this.game, {
+                definition: minigame,
+                factory,
+                character: this.profile.character,
+                hat: this.profile.hat,
+                seed: run.seed,
+                eyebrow: 'Daily Challenge',
+                resultExtras: this.leaderboardExtras(run),
+                onReplay: () => void this.startDaily(minigame).catch(() => this.showMainMenu('daily')),
+                onExit: () => this.showMainMenu('daily'),
             }),
         );
     }
@@ -87,15 +110,30 @@ export class GameManager {
     startFreePlay(): void {
         void this.game.scenes.switchTo(
             new PlaygroundScene(this.game, {
-                character: this.character,
+                character: this.profile.character,
+                hat: this.profile.hat,
                 onExit: () => this.showMainMenu(),
             }),
         );
     }
 
+    private leaderboardExtras(run: RunInfo): ResultExtras {
+        return async (result: MinigameResult) => {
+            const submitted = await submitRun(run.id, result.score);
+            const rank = submitted.rank ? `#${submitted.rank}` : 'Ranked';
+
+            if (!submitted.is_daily) {
+                return [{ label: 'World rank', value: rank }];
+            }
+
+            return [{ label: 'Daily challenge', value: submitted.is_official ? `Official score, ${rank}` : 'Practice (not ranked)' }];
+        };
+    }
+
     private async openParty(name: string, code: string | null): Promise<void> {
-        writeStorage(NAME_KEY, name);
-        const player = await savePlayer(name, this.character.id);
+        this.profile.name = name;
+        saveProfile(this.profile);
+        const player = await savePlayer(displayName(this.profile), this.profile.character.id, this.profile.hat);
 
         this.party?.close();
         this.party = code ? await PartySession.join(player, code) : await PartySession.create(player);
@@ -113,13 +151,17 @@ export class GameManager {
         void this.game.scenes.switchTo(
             new LobbyScene(this.game, {
                 session,
-                onRound: (round) => this.startPartyRound(session, round),
+                onRound: (round) => void this.startPartyRound(session, round),
                 onLeave: () => void this.leaveParty(),
+                onHatChange: (hat) => {
+                    this.profile.hat = hat;
+                    saveProfile(this.profile);
+                },
             }),
         );
     }
 
-    private startPartyRound(session: PartySession, round: RoundInfo): void {
+    private async startPartyRound(session: PartySession, round: RoundInfo): Promise<void> {
         const minigame = findMinigame(round.minigame);
         const me = session.me;
 
@@ -127,14 +169,48 @@ export class GameManager {
             return;
         }
 
+        const factory = await minigame.load();
+
         void this.game.scenes.switchTo(
             new MinigameScene(this.game, {
                 definition: minigame,
+                factory,
                 character: findCharacter(me.character),
+                hat: me.hat,
                 seed: round.seed,
-                schedule: { startsAt: round.starts_at, network: createMinigameNetwork(session) },
+                schedule: {
+                    startsAt: round.starts_at,
+                    network: createMinigameNetwork(session),
+                    label: `Round ${round.number} of ${round.total_rounds}`,
+                    onFinished: (result) => this.showStandings(session, round, result.score),
+                },
                 onReplay: () => this.showLobby(),
                 onExit: () => this.showLobby(),
+            }),
+        );
+    }
+
+    private showStandings(session: PartySession, round: RoundInfo, score: number): void {
+        void session.submitResult(round.id, score).catch(() => undefined);
+
+        void this.game.scenes.switchTo(
+            new StandingsScene(this.game, {
+                session,
+                round,
+                myScore: score,
+                onNextRound: (next) => void this.startPartyRound(session, next),
+                onMatchFinished: (outcome) => this.showPodium(session, outcome),
+            }),
+        );
+    }
+
+    private showPodium(session: PartySession, outcome: RoundOutcome): void {
+        void this.game.scenes.switchTo(
+            new PodiumScene(this.game, {
+                standings: outcome.standings,
+                players: session.room.players,
+                playerId: session.player.id,
+                onBack: () => this.showLobby(),
             }),
         );
     }
@@ -144,10 +220,5 @@ export class GameManager {
         this.party = null;
         this.showMainMenu('party');
         await session?.leave();
-    }
-
-    private selectCharacter(character: CharacterDefinition): void {
-        this.character = character;
-        writeStorage(CHARACTER_KEY, character.id);
     }
 }

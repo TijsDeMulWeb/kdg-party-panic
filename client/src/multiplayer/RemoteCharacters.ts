@@ -34,7 +34,7 @@ export class RemoteCharacters {
         private readonly onVanish: (position: THREE.Vector3) => void,
     ) {
         for (const player of network.remotePlayers) {
-            const model = new CharacterModel(player.character);
+            const model = new CharacterModel(player.character, player.hat);
             model.root.add(createNameTag(player.name, player.character.body, false, 1.7));
             model.root.visible = false;
             scene.add(model.root);

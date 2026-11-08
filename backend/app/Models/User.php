@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -44,6 +45,12 @@ class User extends Authenticatable
     public function hat(): BelongsTo
     {
         return $this->belongsTo(Hat::class);
+    }
+
+    /** @return BelongsToMany<Room, $this> */
+    public function rooms(): BelongsToMany
+    {
+        return $this->belongsToMany(Room::class);
     }
 
     /** @return HasMany<Run, $this> */

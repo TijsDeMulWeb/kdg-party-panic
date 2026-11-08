@@ -1,5 +1,4 @@
 import type { MinigameDefinition } from '../types';
-import { ColorCrash } from './ColorCrash';
 import { DURATION } from './rounds';
 
 export const colorCrash: MinigameDefinition = {
@@ -14,5 +13,5 @@ export const colorCrash: MinigameDefinition = {
         'Run to a tile with that colour (or its symbol) before the bar runs out.',
         'Get there early for a speed bonus. Fall and you are out!',
     ],
-    create: (context) => new ColorCrash(context),
+    load: async () => (await import('./ColorCrash')).createColorCrash,
 };

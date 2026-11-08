@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { CharacterModel } from './CharacterModel';
 import type { InputSnapshot } from '../core/InputManager';
+import { audio } from '../audio/AudioManager';
 import {
     createMovementState,
     DEFAULT_MOVEMENT,
@@ -51,10 +52,16 @@ export class CharacterController {
 
         if (events.jumped) {
             this.model.jump();
+            audio.play('jump');
         }
 
         if (events.landed) {
             this.model.land(events.landingSpeed);
+            audio.play('land', events.landingSpeed / 12);
+        }
+
+        if (events.dashed) {
+            audio.play('dash');
         }
 
         this.syncModel();

@@ -11,11 +11,14 @@ import type { RoomState, RoundInfo } from '../multiplayer/types';
 import { LobbyPanel } from '../ui/LobbyPanel';
 import { randomRange } from '../utils/math';
 import { PartyStage } from '../world/PartyStage';
+import { MINIGAMES } from '../minigames/registry';
+import { audio } from '../audio/AudioManager';
 
 export interface LobbySceneOptions {
     session: PartySession;
     onRound(round: RoundInfo): void;
     onLeave(): void;
+    onHatChange(hat: string | null): void;
 }
 
 interface SeatActor {
@@ -60,7 +63,11 @@ export class LobbyScene implements GameScene {
             playerId: session.player.id,
             onReady: (isReady) => session.setReady(isReady),
             onCharacter: (character) => session.setCharacter(character),
-            onStart: () => session.startRound(),
+            onHat: async (hat) => {
+                await session.setHat(hat);
+                options.onHatChange(hat);
+            },
+            onStart: () => session.startMatch(),
             onLeave: options.onLeave,
         });
     }
@@ -79,10 +86,14 @@ export class LobbyScene implements GameScene {
         );
 
         // Arrived (or reconnected) while a round was about to start: hop straight in.
-        const round = session.room.active_round;
+        const round = session.upcomingRound;
         if (round && round.starts_at > session.clock.now()) {
             this.options.onRound(round);
         }
+
+        // Warm up every minigame's code so round starts never wait on a download.
+        MINIGAMES.forEach((minigame) => void minigame.load());
+        audio.setMusic('menu');
 
         void session.refresh().catch(() => this.panel.showMessage('Could not reach the party server.'));
     }
@@ -143,7 +154,7 @@ export class LobbyScene implements GameScene {
             let actor = this.actors.get(player.id);
 
             // Re-create the model when someone switches character.
-            if (actor && actor.character !== player.character) {
+            if (actor && actor.character !== `${player.character}:${player.hat}`) {
                 this.stage.remove(actor.model.root);
                 this.actors.delete(player.id);
                 actor = undefined;
@@ -151,10 +162,10 @@ export class LobbyScene implements GameScene {
 
             if (!actor) {
                 const definition = findCharacter(player.character);
-                const model = new CharacterModel(definition);
+                const model = new CharacterModel(definition, player.hat);
                 model.root.add(createNameTag(player.name, definition.body, player.id === this.options.session.player.id));
                 this.stage.add(model.root);
-                actor = { playerId: player.id, character: player.character, model, y: 0, vy: 6, hopTimer: randomRange(0.5, 2), ready: false };
+                actor = { playerId: player.id, character: `${player.character}:${player.hat}`, model, y: 0, vy: 6, hopTimer: randomRange(0.5, 2), ready: false };
                 this.actors.set(player.id, actor);
                 this.effects.confetti(new THREE.Vector3(this.seatX(player.seat), 2, 0).add(this.stage.position), 30);
             }

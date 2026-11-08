@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\RoomUpdated;
 use App\Http\Requests\UpdateCurrentPlayerRequest;
 use App\Http\Resources\PlayerResource;
 use App\Models\Character;
 use App\Models\Hat;
+use App\Models\Room;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -38,6 +40,8 @@ class CurrentPlayerController extends Controller
         }
 
         $player->save();
+
+        $player->rooms->each(fn (Room $room) => broadcast(new RoomUpdated($room)));
 
         return new PlayerResource($player);
     }

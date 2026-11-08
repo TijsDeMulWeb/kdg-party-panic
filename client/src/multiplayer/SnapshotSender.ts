@@ -12,7 +12,7 @@ export class SnapshotSender {
 
     constructor(private readonly network: MinigameNetwork) {}
 
-    update(dt: number, controller: CharacterController, out: boolean): void {
+    update(dt: number, controller: CharacterController, out: boolean, score?: number, extra?: () => number[]): void {
         this.elapsed += dt;
 
         if (this.elapsed < SEND_INTERVAL) {
@@ -32,6 +32,8 @@ export class SnapshotSender {
             g: grounded ? 1 : 0,
             v: round(velocity.y),
             o: out ? 1 : 0,
+            c: score,
+            e: extra?.(),
         });
     }
 }

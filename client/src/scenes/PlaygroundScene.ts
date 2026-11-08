@@ -15,6 +15,7 @@ import { angleDelta, damp, randomRange } from '../utils/math';
 
 export interface PlaygroundOptions {
     character: CharacterDefinition;
+    hat: string | null;
     onExit(): void;
 }
 
@@ -59,7 +60,7 @@ export class PlaygroundScene implements GameScene {
         this.buildCourse();
         this.buildBystanders();
 
-        const model = new CharacterModel(options.character);
+        const model = new CharacterModel(options.character, options.hat);
         this.scene.add(model.root);
         this.player = new CharacterController(model, this.world, SPAWN);
         this.player.teleport(SPAWN, Math.PI);

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Events\RoomUpdated;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class AccountsTest extends TestCase
@@ -45,5 +47,16 @@ class AccountsTest extends TestCase
             ->patchJson(route('currentPlayer.update'), ['hat' => 'crown'])
             ->assertOk()
             ->assertJsonPath('data.hat', 'crown');
+    }
+
+    public function test_a_new_hat_shows_up_in_the_party_lobby(): void
+    {
+        Event::fake([RoomUpdated::class]);
+        $room = $this->roomWithPlayers(2);
+
+        $this->actingAs($room->host)->patchJson(route('currentPlayer.update'), ['hat' => 'bow'])->assertOk();
+
+        $this->actingAs($room->host)->getJson(route('rooms.show', $room))->assertJsonPath('data.players.0.hat', 'bow');
+        Event::assertDispatched(RoomUpdated::class);
     }
 }

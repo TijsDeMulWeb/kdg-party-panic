@@ -1,4 +1,5 @@
 import { findCharacter, ROSTER } from '../characters/roster';
+import { HATS } from '../characters/hats';
 import type { RoomPlayer, RoomState } from '../multiplayer/types';
 import { el } from './dom';
 
@@ -6,6 +7,7 @@ export interface LobbyPanelOptions {
     playerId: number;
     onReady(isReady: boolean): Promise<void>;
     onCharacter(character: string): Promise<void>;
+    onHat(hat: string | null): Promise<void>;
     onStart(): Promise<void>;
     onLeave(): void;
 }
@@ -21,6 +23,7 @@ export class LobbyPanel {
     private readonly startButton: HTMLButtonElement;
     private readonly startHint: HTMLElement;
     private readonly characterName: HTMLElement;
+    private readonly hatName = el('span', { className: 'picker__name picker__name--small' });
     private readonly message: HTMLElement;
     private state: RoomState | null = null;
     private online: ReadonlySet<number> = new Set();
@@ -46,10 +49,17 @@ export class LobbyPanel {
                 el('span', { className: 'lobby__code-hint', text: 'Tap to copy and share with friends' }),
             ]),
             this.seats,
-            el('div', { className: 'picker lobby__picker' }, [
-                el('button', { className: 'picker__arrow', text: '‹', attrs: { 'aria-label': 'Previous character' }, onClick: () => void this.cycleCharacter(-1) }),
-                el('div', { className: 'picker__info' }, [el('span', { className: 'party-menu__label', text: 'You play as' }), this.characterName]),
-                el('button', { className: 'picker__arrow', text: '›', attrs: { 'aria-label': 'Next character' }, onClick: () => void this.cycleCharacter(1) }),
+            el('div', { className: 'picker look-card lobby__picker' }, [
+                el('div', { className: 'look-card__row' }, [
+                    el('button', { className: 'picker__arrow', text: '‹', attrs: { 'aria-label': 'Previous character' }, onClick: () => void this.cycleCharacter(-1) }),
+                    el('div', { className: 'picker__info' }, [el('span', { className: 'party-menu__label', text: 'You play as' }), this.characterName]),
+                    el('button', { className: 'picker__arrow', text: '›', attrs: { 'aria-label': 'Next character' }, onClick: () => void this.cycleCharacter(1) }),
+                ]),
+                el('div', { className: 'look-card__row' }, [
+                    el('button', { className: 'picker__arrow', text: '‹', attrs: { 'aria-label': 'Previous hat' }, onClick: () => void this.cycleHat(-1) }),
+                    el('div', { className: 'picker__info' }, [el('span', { className: 'party-menu__label', text: 'Hat' }), this.hatName]),
+                    el('button', { className: 'picker__arrow', text: '›', attrs: { 'aria-label': 'Next hat' }, onClick: () => void this.cycleHat(1) }),
+                ]),
             ]),
             el('div', { className: 'lobby__actions' }, [this.readyButton, this.startButton, this.startHint]),
             this.message,
@@ -79,6 +89,7 @@ export class LobbyPanel {
 
         if (me) {
             this.characterName.textContent = findCharacter(me.character).name;
+            this.hatName.textContent = HATS.find((hat) => hat.id === me.hat)?.name ?? 'No hat';
             this.readyButton.textContent = me.is_ready ? 'Not ready' : "I'm ready!";
             this.readyButton.classList.toggle('is-ready', me.is_ready);
         }
@@ -90,8 +101,8 @@ export class LobbyPanel {
         this.startButton.disabled = this.busy || blocker !== null;
         this.startHint.textContent = isHost ? (blocker ?? readyHint) : 'The host starts the match.';
 
-        if (state.active_round) {
-            this.startHint.textContent = 'A round is being played…';
+        if (state.active_match && !state.active_match.is_finished) {
+            this.startHint.textContent = 'A match is being played. You will join the next one.';
         }
     }
 
@@ -162,6 +173,18 @@ export class LobbyPanel {
                 return;
             }
         }
+    }
+
+    private async cycleHat(direction: number): Promise<void> {
+        const me = this.me();
+
+        if (!me) {
+            return;
+        }
+
+        const options = [null, ...HATS.map((hat) => hat.id)];
+        const index = options.indexOf(me.hat);
+        await this.run(() => this.options.onHat(options[(index + direction + options.length) % options.length]));
     }
 
     private copyCode(): void {

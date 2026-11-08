@@ -8,6 +8,7 @@ export interface ResultsCardOptions {
     accent: string;
     /** Party rounds show a single "Back to lobby" button and no personal best. */
     mode: 'solo' | 'party';
+    eyebrow?: string;
     onReplay(): void;
     onExit(): void;
 }
@@ -23,7 +24,7 @@ export class ResultsCard {
 
         this.root = el('div', { className: 'overlay' }, [
             el('div', { className: 'card results-card' }, [
-                el('span', { className: 'card__eyebrow', text: options.mode === 'solo' ? 'Solo Arcade' : 'Private Party' }),
+                el('span', { className: 'card__eyebrow', text: options.eyebrow ?? (options.mode === 'solo' ? 'Solo Arcade' : 'Private Party') }),
                 el('h2', { className: 'card__title', text: result.title }),
                 isRecord ? el('span', { className: 'results-card__record', text: 'New personal best!' }) : null,
                 el('div', { className: 'results-card__score' }, [el('span', { className: 'results-card__score-label', text: 'Score' }), el('span', { className: 'results-card__score-value', text: String(result.score) })]),
@@ -43,6 +44,15 @@ export class ResultsCard {
             ]),
         ]);
         this.root.style.setProperty('--card-accent', options.accent);
+    }
+
+    /** Appends extra stat lines once they are known (e.g. leaderboard rank). */
+    addLines(lines: { label: string; value: string }[]): void {
+        const list = this.root.querySelector('.results-card__stats');
+
+        for (const line of lines) {
+            list?.append(el('dt', { text: line.label }), el('dd', { text: line.value }));
+        }
     }
 
     mount(parent: HTMLElement): void {

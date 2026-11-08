@@ -7,13 +7,13 @@ export class IntroCard {
     private readonly status = el('span', { className: 'intro-card__status' });
 
     /** Without `onStart` the card has no button: the start is scheduled by the server. */
-    constructor(definition: MinigameDefinition, best: number | null, private readonly onStart?: () => void) {
+    constructor(definition: MinigameDefinition, best: number | null, private readonly onStart?: () => void, eyebrow?: string) {
         const isTouch = window.matchMedia('(pointer: coarse)').matches;
         const controls = isTouch ? `Joystick to move · Jump · ${definition.actionLabel}` : `WASD / Arrows move · Space jump · Shift ${definition.actionLabel.toLowerCase()}`;
 
         this.root = el('div', { className: 'overlay' }, [
             el('div', { className: 'card intro-card' }, [
-                el('span', { className: 'card__eyebrow', text: `${definition.durationSeconds} second minigame` }),
+                el('span', { className: 'card__eyebrow', text: eyebrow ?? `${definition.durationSeconds} second minigame` }),
                 el('h2', { className: 'card__title', text: definition.name }),
                 el('p', { className: 'card__lead', text: definition.tagline }),
                 el(

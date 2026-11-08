@@ -3,7 +3,8 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { addOutline, toonMaterial } from '../../design/materials';
 import { palette } from '../../design/palette';
 import type { ColliderHandle, StaticWorld } from '../../world/StaticWorld';
-import { CRASH_COLORS, symbolPoints, type SymbolShape } from './colors';
+import { CRASH_COLORS } from './colors';
+import { symbolGeometry } from '../../design/symbols';
 import { GRID_SIZE } from './rounds';
 
 export const TILE_SIZE = 2.3;
@@ -29,20 +30,6 @@ interface Tile {
     pop: number;
 }
 
-const symbolGeometries = new Map<SymbolShape, THREE.ShapeGeometry>();
-
-function symbolGeometry(symbol: SymbolShape): THREE.ShapeGeometry {
-    let geometry = symbolGeometries.get(symbol);
-
-    if (!geometry) {
-        const points = symbolPoints(symbol).map(([x, y]) => new THREE.Vector2(x * 0.62, y * 0.62));
-        geometry = new THREE.ShapeGeometry(new THREE.Shape(points));
-        geometry.rotateX(-Math.PI / 2);
-        symbolGeometries.set(symbol, geometry);
-    }
-
-    return geometry;
-}
 
 /** The 7x7 floating tile grid, its animations and its colliders. */
 export class ColorArena {
@@ -68,7 +55,7 @@ export class ColorArena {
             body.receiveShadow = true;
             addOutline(body);
 
-            const symbol = new THREE.Mesh(symbolGeometry('circle'), toonMaterial(palette.white));
+            const symbol = new THREE.Mesh(symbolGeometry('circle', 0.62), toonMaterial(palette.white));
             symbol.position.y = 0.012;
             symbol.receiveShadow = true;
 
@@ -125,7 +112,7 @@ export class ColorArena {
             const color = CRASH_COLORS[colorIndex];
             tile.colorIndex = colorIndex;
             tile.body.material = toonMaterial(color.color);
-            tile.symbol.geometry = symbolGeometry(color.symbol);
+            tile.symbol.geometry = symbolGeometry(color.symbol, 0.62);
             tile.pop = 1;
         });
     }

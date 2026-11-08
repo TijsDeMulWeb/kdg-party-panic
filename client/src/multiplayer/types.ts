@@ -4,7 +4,9 @@ export interface Player {
     id: number;
     name: string;
     character: string | null;
+    hat: string | null;
     is_guest: boolean;
+    email: string | null;
 }
 
 export interface RoomPlayer {
@@ -13,15 +15,52 @@ export interface RoomPlayer {
     seat: number;
     is_ready: boolean;
     character: string;
+    hat: string | null;
 }
 
 export interface RoundInfo {
+    id: number;
+    match_id: number;
     number: number;
+    total_rounds: number;
     minigame: string;
     seed: number;
     /** Server time in milliseconds. */
     starts_at: number;
     ends_at: number;
+    is_finished: boolean;
+}
+
+export interface MatchInfo {
+    id: number;
+    is_finished: boolean;
+    minigames: string[];
+    current_round: RoundInfo | null;
+}
+
+export interface RoundResultRow {
+    player_id: number;
+    score: number;
+    /** Null when the player never reported (disconnected). */
+    placement: number | null;
+    points: number;
+}
+
+export interface StandingRow {
+    player_id: number;
+    name: string;
+    character: string;
+    total_points: number;
+    total_score: number;
+    rank: number;
+}
+
+export interface RoundOutcome {
+    round: RoundInfo;
+    is_finished: boolean;
+    match_finished: boolean;
+    results: RoundResultRow[];
+    standings: StandingRow[];
 }
 
 export interface RoomState {
@@ -29,7 +68,7 @@ export interface RoomState {
     host_id: number;
     max_players: number;
     min_players: number;
-    active_round: RoundInfo | null;
+    active_match: MatchInfo | null;
     players: RoomPlayer[];
 }
 
@@ -55,4 +94,8 @@ export interface PlayerSnapshot {
     v: number;
     /** Eliminated / out of play. */
     o: 0 | 1;
+    /** Live score. */
+    c?: number;
+    /** Minigame-specific extra values (e.g. ball position, claimed objects). */
+    e?: number[];
 }

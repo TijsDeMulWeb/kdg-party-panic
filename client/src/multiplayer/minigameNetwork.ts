@@ -6,7 +6,7 @@ import type { PartySession } from './PartySession';
 export function createMinigameNetwork(session: PartySession): MinigameNetwork {
     const remotePlayers = session.room.players
         .filter((player) => player.id !== session.player.id)
-        .map((player) => ({ id: player.id, name: player.name, seat: player.seat, character: findCharacter(player.character) }));
+        .map((player) => ({ id: player.id, name: player.name, seat: player.seat, character: findCharacter(player.character), hat: player.hat }));
 
     return {
         localSeat: session.me?.seat ?? 0,

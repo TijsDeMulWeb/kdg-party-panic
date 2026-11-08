@@ -4,13 +4,14 @@ import { Emitter } from './emitter';
 import * as partyApi from './partyApi';
 import { realtime } from './realtime';
 import { ServerClock } from './ServerClock';
-import type { Player, PlayerSnapshot, RoomPlayer, RoomState, RoundInfo } from './types';
+import type { Player, PlayerSnapshot, RoomPlayer, RoomState, RoundInfo, RoundOutcome } from './types';
 
 const ROOM_KEY = 'party-panic.room';
 
 type SessionEvents = {
     room: RoomState;
     round: RoundInfo;
+    outcome: RoundOutcome;
     presence: ReadonlySet<number>;
     snapshot: { playerId: number; snapshot: PlayerSnapshot };
     disconnected: undefined;
@@ -27,6 +28,9 @@ export class PartySession {
     readonly clock = new ServerClock();
     private channel: PresenceChannel | null = null;
     private connected = new Set<number>();
+    /** Latest scheduled round and finished outcomes, so scenes that open late still see them. */
+    private latestRound: RoundInfo | null = null;
+    private readonly outcomes = new Map<number, RoundOutcome>();
 
     private constructor(
         readonly player: Player,
@@ -65,6 +69,7 @@ export class PartySession {
 
     private static async open(player: Player, state: RoomState): Promise<PartySession> {
         const session = new PartySession(player, state);
+        session.latestRound = state.active_match?.current_round ?? null;
         writeStorage(ROOM_KEY, state.code);
         await Promise.all([session.clock.sync(), session.subscribe()]);
 
@@ -95,8 +100,43 @@ export class PartySession {
         this.applyState(await partyApi.updateMembership(this.state.code, { character }));
     }
 
-    async startRound(): Promise<void> {
-        await partyApi.startRound(this.state.code);
+    async setHat(hat: string | null): Promise<void> {
+        await partyApi.updateHat(hat);
+        await this.refresh();
+    }
+
+    async startMatch(): Promise<void> {
+        await partyApi.startMatch(this.state.code);
+    }
+
+    get upcomingRound(): RoundInfo | null {
+        return this.latestRound && !this.latestRound.is_finished ? this.latestRound : null;
+    }
+
+    outcomeFor(roundId: number): RoundOutcome | undefined {
+        return this.outcomes.get(roundId);
+    }
+
+    /** Reports this player's score; the server answers with the outcome once everyone is in. */
+    async submitResult(roundId: number, score: number): Promise<void> {
+        const outcome = await partyApi.submitRoundResult(roundId, score);
+        this.storeOutcome(outcome);
+    }
+
+    /** Asks the server to close a round whose submission window has passed. */
+    async finalize(roundId: number): Promise<RoundOutcome> {
+        const outcome = await partyApi.finalizeRound(roundId);
+        this.storeOutcome(outcome);
+        return outcome;
+    }
+
+    private storeOutcome(outcome: RoundOutcome): void {
+        if (!outcome.is_finished || this.outcomes.has(outcome.round.id)) {
+            return;
+        }
+
+        this.outcomes.set(outcome.round.id, outcome);
+        this.events.emit('outcome', outcome);
     }
 
     async refresh(): Promise<void> {
@@ -135,7 +175,11 @@ export class PartySession {
         this.channel = channel;
 
         channel.bind('room.updated', ({ room }: { room: RoomState }) => this.applyState(room));
-        channel.bind('round.starting', ({ round }: { round: RoundInfo }) => this.events.emit('round', round));
+        channel.bind('round.starting', ({ round }: { round: RoundInfo }) => {
+            this.latestRound = round;
+            this.events.emit('round', round);
+        });
+        channel.bind('round.finished', ({ outcome }: { outcome: RoundOutcome }) => this.storeOutcome(outcome));
         channel.bind('client-snapshot', (snapshot: PlayerSnapshot) => {
             this.events.emit('snapshot', { playerId: snapshot.p, snapshot });
         });

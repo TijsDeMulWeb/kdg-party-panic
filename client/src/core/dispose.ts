@@ -11,7 +11,9 @@ export function disposeObject(root: THREE.Object3D): void {
 
     root.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh) {
-            geometries.add(object.geometry);
+            if (!object.geometry.userData.shared) {
+                geometries.add(object.geometry);
+            }
             const list = Array.isArray(object.material) ? object.material : [object.material];
             for (const material of list) {
                 if (!material.userData.shared) {

@@ -16,8 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'minigame_id', 'daily_challenge_id', 'seed', 'is_official', 'score', 'started_at', 'submitted_at'])]
 class Run extends Model
 {
-    /** Extra time after the minigame's duration in which a score is still accepted. */
-    public static int $submissionGraceSeconds = 90;
+    /** Time after the minigame's duration in which a score is still accepted (covers reading the intro). */
+    public static int $submissionGraceSeconds = 300;
 
     protected function casts(): array
     {

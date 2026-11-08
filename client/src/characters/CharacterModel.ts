@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { CharacterDefinition } from './roster';
+import { createHat } from './hats';
 import { addOutline, toonMaterial } from '../design/materials';
 import { palette } from '../design/palette';
 import { clamp, damp, randomRange } from '../utils/math';
@@ -53,7 +54,7 @@ export class CharacterModel {
     private blinkTimer = randomRange(1, 4);
     private blinkProgress = 1;
 
-    constructor(definition: CharacterDefinition) {
+    constructor(definition: CharacterDefinition, hat: string | null = null) {
         this.definition = definition;
         this.root.name = `character-${definition.id}`;
         this.root.add(this.squashPivot);
@@ -63,6 +64,7 @@ export class CharacterModel {
         this.buildFace();
         this.buildLimbs();
         this.buildTopper();
+        this.wearHat(hat);
 
         this.root.traverse((object) => {
             if (object instanceof THREE.Mesh && object.material !== undefined && !(object.material instanceof THREE.ShaderMaterial)) {
@@ -212,6 +214,19 @@ export class CharacterModel {
             this.hands.push(hand);
             this.body.add(hand);
         }
+    }
+
+    private wearHat(id: string | null): void {
+        const hat = id ? createHat(id, this.definition.feet) : null;
+
+        if (!hat) {
+            return;
+        }
+
+        // Hats sit on the crown; the character's own topper is hidden to avoid clipping.
+        hat.position.y += 1.08;
+        this.topper.visible = false;
+        this.body.add(hat);
     }
 
     private buildTopper(): void {

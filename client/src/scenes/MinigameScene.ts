@@ -2,7 +2,8 @@ import type * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { GameScene } from '../core/GameScene';
 import type { CharacterDefinition } from '../characters/roster';
-import type { Minigame, MinigameDefinition, MinigameNetwork, MinigameResult } from '../minigames/types';
+import type { Minigame, MinigameDefinition, MinigameFactory, MinigameNetwork, MinigameResult } from '../minigames/types';
+import { audio } from '../audio/AudioManager';
 import { getPersonalBest, submitPersonalBest } from '../scoring/personalBest';
 import { el } from '../ui/dom';
 import { Countdown } from '../ui/minigame/Countdown';
@@ -15,13 +16,25 @@ export interface MinigameSchedule {
     /** Server time (ms) at which play begins. */
     startsAt: number;
     network: MinigameNetwork;
+    /** Shown on the intro card, e.g. "Round 2 of 5". */
+    label: string;
+    /** Called with the final result instead of showing the solo results card. */
+    onFinished(result: MinigameResult): void;
 }
+
+/** Extra lines for the solo results card, e.g. a leaderboard rank. Resolved after submitting. */
+export type ResultExtras = (result: MinigameResult) => Promise<{ label: string; value: string }[]>;
 
 export interface MinigameSceneOptions {
     definition: MinigameDefinition;
+    factory: MinigameFactory;
     character: CharacterDefinition;
+    hat?: string | null;
     seed: number;
     schedule?: MinigameSchedule;
+    /** Solo only: label above the title, e.g. "Daily Challenge". */
+    eyebrow?: string;
+    resultExtras?: ResultExtras;
     onReplay(): void;
     onExit(): void;
 }
@@ -50,6 +63,9 @@ export class MinigameScene implements GameScene {
     private localElapsed = 0;
     private intro: IntroCard | null = null;
     private results: ResultsCard | null = null;
+    private lastTick = -1;
+    private readonly remoteScores = new Map<number, number>();
+    private unsubscribeScores: (() => void) | null = null;
 
     constructor(private readonly game: Game, private readonly options: MinigameSceneOptions) {
         const { definition, character, seed, schedule } = options;
@@ -59,7 +75,7 @@ export class MinigameScene implements GameScene {
         this.layer = el('div', { className: 'minigame-layer' }, [this.hud.root, this.overlay]);
         this.duration = definition.durationSeconds;
 
-        this.minigame = definition.create({ character, seed, hud: this.hud, overlay: this.overlay, network: schedule?.network });
+        this.minigame = options.factory({ character, hat: options.hat ?? null, seed, hud: this.hud, overlay: this.overlay, network: schedule?.network });
     }
 
     get scene(): THREE.Scene {
@@ -82,15 +98,25 @@ export class MinigameScene implements GameScene {
         this.hud.setVisible(false);
         window.addEventListener('keydown', this.onKeyDown);
 
-        const { definition } = this.options;
-        this.intro = this.isParty
-            ? new IntroCard(definition, null)
-            : new IntroCard(definition, getPersonalBest(definition.id), () => this.setPhase('countdown'));
+        const { definition, schedule } = this.options;
+        this.intro = schedule
+            ? new IntroCard(definition, null, undefined, schedule.label)
+            : new IntroCard(definition, getPersonalBest(definition.id), () => this.setPhase('countdown'), this.options.eyebrow);
         this.intro.mount(this.game.uiRoot);
+        audio.setMusic('game');
+
+        if (schedule) {
+            this.unsubscribeScores = schedule.network.onSnapshot((playerId, snapshot) => {
+                if (snapshot.c !== undefined) {
+                    this.remoteScores.set(playerId, snapshot.c);
+                }
+            });
+        }
     }
 
     exit(): void {
         window.removeEventListener('keydown', this.onKeyDown);
+        this.unsubscribeScores?.();
         this.game.input.setEnabled(true);
         this.game.input.setGameplayControls(false);
         this.intro?.unmount();
@@ -118,6 +144,7 @@ export class MinigameScene implements GameScene {
 
         if (this.phase === 'countdown') {
             this.countdown.update(untilStart);
+            this.tick(Math.ceil(untilStart));
             if (untilStart <= 0) {
                 this.setPhase('playing');
             }
@@ -128,6 +155,11 @@ export class MinigameScene implements GameScene {
 
         if (this.phase === 'playing') {
             this.hud.setTime(remaining);
+            this.hud.setScore(this.minigame.getScore());
+            if (remaining <= 5) {
+                this.tick(Math.ceil(remaining));
+            }
+            this.updateScoreboard();
             this.countdown.update(untilStart);
             if (this.phaseTime > 0.7) {
                 this.countdown.unmount();
@@ -179,6 +211,7 @@ export class MinigameScene implements GameScene {
         }
 
         if (phase === 'playing') {
+            audio.play('go');
             this.localElapsed = 0;
             this.game.input.setEnabled(true);
             this.minigame.start();
@@ -189,6 +222,7 @@ export class MinigameScene implements GameScene {
             this.countdown.unmount();
             if (timeUp) {
                 this.hud.callout("Time's up!", 'neutral');
+                audio.play('whistle');
             }
         }
 
@@ -197,9 +231,44 @@ export class MinigameScene implements GameScene {
         }
     }
 
+    /** One beep per second during the countdown and the last five seconds. */
+    private tick(second: number): void {
+        if (second !== this.lastTick && second > 0) {
+            this.lastTick = second;
+            audio.play('tick');
+        }
+    }
+
+    private updateScoreboard(): void {
+        const network = this.options.schedule?.network;
+
+        if (!network) {
+            return;
+        }
+
+        const rows = [
+            { name: 'You', color: this.options.character.body, score: this.minigame.getScore(), isMe: true },
+            ...network.remotePlayers.map((player) => ({
+                name: player.name,
+                color: player.character.body,
+                score: this.remoteScores.get(player.id) ?? 0,
+                isMe: false,
+            })),
+        ];
+
+        this.hud.setScoreboard(rows);
+    }
+
     private showResults(result: MinigameResult): void {
-        const { definition } = this.options;
-        const isRecord = !this.isParty && result.score > 0 && submitPersonalBest(definition.id, result.score);
+        const { definition, schedule } = this.options;
+
+        if (schedule) {
+            schedule.onFinished(result);
+            return;
+        }
+
+        const isRecord = result.score > 0 && submitPersonalBest(definition.id, result.score);
+        audio.play(isRecord ? 'win' : 'score');
 
         this.hud.setVisible(false);
         this.game.input.setGameplayControls(false);
@@ -208,11 +277,17 @@ export class MinigameScene implements GameScene {
             best: getPersonalBest(definition.id),
             isRecord,
             accent: definition.accent,
-            mode: this.isParty ? 'party' : 'solo',
+            mode: 'solo',
+            eyebrow: this.options.eyebrow,
             onReplay: this.options.onReplay,
             onExit: this.options.onExit,
         });
         this.results.mount(this.game.uiRoot);
+
+        void this.options.resultExtras?.(result).then(
+            (lines) => this.results?.addLines(lines),
+            () => this.results?.addLines([{ label: 'Leaderboard', value: 'Offline' }]),
+        );
     }
 
     private readonly onKeyDown = (event: KeyboardEvent): void => {

@@ -1,31 +1,38 @@
 import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { GameScene } from '../core/GameScene';
+import { audio } from '../audio/AudioManager';
 import { CharacterModel } from '../characters/CharacterModel';
-import { ROSTER, type CharacterDefinition } from '../characters/roster';
+import { ROSTER } from '../characters/roster';
 import { createCloudLayer, createLighting, createSky, type CloudLayer } from '../design/environment';
 import { Effects } from '../effects/Effects';
-import { MainMenu } from '../ui/MainMenu';
-import { SoloArcadeMenu } from '../ui/SoloArcadeMenu';
-import { PartyMenu } from '../ui/PartyMenu';
 import { MINIGAMES, UPCOMING_MINIGAMES } from '../minigames/registry';
 import type { MinigameDefinition } from '../minigames/types';
-import { PartyStage } from '../world/PartyStage';
+import type { LocalProfile } from '../online/profile';
+import { syncProfile } from '../online/onlineApi';
+import { DailyMenu } from '../ui/DailyMenu';
+import { LeaderboardMenu } from '../ui/LeaderboardMenu';
+import { MainMenu } from '../ui/MainMenu';
+import { PartyMenu } from '../ui/PartyMenu';
+import { ProfileMenu } from '../ui/ProfileMenu';
+import { SoloArcadeMenu } from '../ui/SoloArcadeMenu';
+import { TopBar } from '../ui/TopBar';
+import { WardrobeMenu } from '../ui/WardrobeMenu';
 import { damp, randomRange } from '../utils/math';
+import { PartyStage } from '../world/PartyStage';
+
+export type MenuView = 'main' | 'arcade' | 'party' | 'daily' | 'leaderboard' | 'profile' | 'wardrobe';
 
 export interface MainMenuOptions {
-    character: CharacterDefinition;
-    onSelectCharacter(character: CharacterDefinition): void;
+    profile: LocalProfile;
+    view?: MenuView;
+    onProfileChange(profile: LocalProfile): void;
     onFreePlay(): void;
     onPlayMinigame(minigame: MinigameDefinition): void;
-    defaultName: string;
+    onPlayDaily(minigame: MinigameDefinition): Promise<void>;
     onCreateParty(name: string): Promise<void>;
     onJoinParty(name: string, code: string): Promise<void>;
-    /** Which panel to open on. */
-    view?: MenuView;
 }
-
-export type MenuView = 'main' | 'arcade' | 'party';
 
 interface Performer {
     model: CharacterModel;
@@ -35,84 +42,92 @@ interface Performer {
     hopTimer: number;
 }
 
+interface Panel {
+    mount(): void;
+    unmount(): void;
+}
+
 const GRAVITY = 30;
 
-/** Title screen: the cast hops around on a floating stage under the logo. */
+/** Title screen: the cast hops around on a floating stage next to the menus. */
 export class MainMenuScene implements GameScene {
     readonly scene = new THREE.Scene();
     readonly camera = new THREE.PerspectiveCamera(42, 1, 0.1, 800);
 
     private readonly stage = new THREE.Group();
-    private readonly performers: Performer[] = [];
     private readonly partyStage = new PartyStage();
+    private readonly performers: Performer[] = [];
     private readonly effects: Effects;
     private readonly clouds: CloudLayer;
-    private readonly menu: MainMenu;
-    private readonly arcade: SoloArcadeMenu;
-    private readonly party: PartyMenu;
-    private view: MenuView;
+    private readonly topBar: TopBar;
+    private readonly leaderboard: LeaderboardMenu;
+    private readonly panels: Record<MenuView, Panel>;
     private selectedIndex: number;
+    private view: MenuView;
     private time = 0;
     private confettiTimer = 1.2;
-    private cameraBase = new THREE.Vector3(0, 3.4, 11);
-    private lookAt = new THREE.Vector3(0, 1.3, 0);
+    private readonly cameraBase = new THREE.Vector3(0, 3.4, 11);
+    private readonly lookAt = new THREE.Vector3(0, 1.3, 0);
+    private readonly currentLook = new THREE.Vector3(0, 1.3, 0);
+    private cameraPlaced = false;
 
     constructor(private readonly game: Game, private readonly options: MainMenuOptions) {
-        this.selectedIndex = Math.max(0, ROSTER.findIndex((character) => character.id === options.character.id));
+        this.selectedIndex = Math.max(0, ROSTER.indexOf(options.profile.character));
 
         this.scene.add(createSky());
         createLighting(this.scene, 10);
         this.clouds = createCloudLayer(14, 30, 70, -6, 16);
-        this.scene.add(this.clouds.group);
+        this.scene.add(this.clouds.group, this.stage);
+        this.stage.add(this.partyStage.group);
         this.effects = new Effects(this.scene);
+        this.buildCast();
 
-        this.buildStage();
+        const back = (): void => this.showView('main');
 
-        this.menu = new MainMenu(game.uiRoot, {
-            roster: ROSTER,
-            selectedIndex: this.selectedIndex,
-            onSelect: (index) => this.select(index),
+        const menu = new MainMenu(game.uiRoot, {
             onSoloArcade: () => this.showView('arcade'),
             onPrivateParty: () => this.showView('party'),
+            onDailyChallenge: () => this.showView('daily'),
+            onLeaderboard: () => this.showView('leaderboard'),
             onFreePlay: () => options.onFreePlay(),
         });
 
-        this.arcade = new SoloArcadeMenu(game.uiRoot, {
-            minigames: MINIGAMES,
-            upcoming: UPCOMING_MINIGAMES,
-            onPlay: (minigame) => options.onPlayMinigame(minigame),
-            onBack: () => this.showView('main'),
-        });
+        this.topBar = new TopBar(game.uiRoot, { onProfile: () => this.showView('profile'), onWardrobe: () => this.showView('wardrobe') });
+        const changeLook = (profile: LocalProfile): void => {
+            this.applyProfile(profile);
+            void syncProfile(profile).catch(() => undefined);
+        };
 
-        this.party = new PartyMenu(game.uiRoot, {
-            defaultName: options.defaultName,
-            onCreate: options.onCreateParty,
-            onJoin: options.onJoinParty,
-            onBack: () => this.showView('main'),
-        });
+        this.leaderboard = new LeaderboardMenu(game.uiRoot, back);
+
+        this.panels = {
+            main: menu,
+            arcade: new SoloArcadeMenu(game.uiRoot, { minigames: MINIGAMES, upcoming: UPCOMING_MINIGAMES, onPlay: (minigame) => options.onPlayMinigame(minigame), onBack: back }),
+            party: new PartyMenu(game.uiRoot, { defaultName: options.profile.name, onCreate: options.onCreateParty, onJoin: options.onJoinParty, onBack: back }),
+            daily: new DailyMenu(game.uiRoot, { onPlay: options.onPlayDaily, onLeaderboard: () => this.showLeaderboard('daily'), onBack: back }),
+            leaderboard: this.leaderboard,
+            profile: new ProfileMenu(game.uiRoot, { profile: options.profile, onChange: (profile) => this.applyProfile(profile), onBack: back }),
+            wardrobe: new WardrobeMenu(game.uiRoot, { profile: options.profile, onChange: changeLook, onBack: back }),
+        };
 
         this.view = options.view ?? 'main';
     }
 
     enter(): void {
         this.game.input.setGameplayControls(false);
+        audio.setMusic('menu');
+        this.topBar.mount();
+        this.renderTopBar();
         this.showView(this.view);
     }
 
     exit(): void {
-        this.menu.unmount();
-        this.arcade.unmount();
-        this.party.unmount();
+        this.topBar.unmount();
+        Object.values(this.panels).forEach((panel) => panel.unmount());
     }
 
-    private showView(view: MenuView): void {
-        this.view = view;
-        this.menu.unmount();
-        this.arcade.unmount();
-        this.party.unmount();
-
-        const panels = { main: this.menu, arcade: this.arcade, party: this.party };
-        panels[view].mount();
+    private renderTopBar(): void {
+        this.topBar.render(this.options.profile.name, this.options.profile.character.body);
     }
 
     resize(width: number, height: number): void {
@@ -120,14 +135,11 @@ export class MainMenuScene implements GameScene {
         this.camera.aspect = aspect;
 
         if (aspect >= 1.15) {
-            // Landscape: logo and buttons on the left, cast on the right.
             this.stage.position.set(3.4, 0, 0);
             this.cameraBase.set(0.6, 3.8, 13.5);
             this.lookAt.set(0.6, 1.4, 0);
             this.camera.fov = 40;
         } else {
-            // Portrait: cast centred between the logo and the buttons, pulled
-            // back far enough that the whole line-up fits the narrow width.
             this.camera.fov = 50;
             const halfHorizontalFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * aspect);
             const distance = Math.min(32, Math.max(14, 4.6 / Math.tan(halfHorizontalFov)));
@@ -142,78 +154,112 @@ export class MainMenuScene implements GameScene {
     update(dt: number): void {
         this.time += dt;
 
-        this.performers.forEach((performer, index) => {
-            this.updatePerformer(performer, index === this.selectedIndex, dt);
-        });
-
-        this.partyStage.update(dt, this.time);
+        this.performers.forEach((performer, index) => this.updatePerformer(performer, index === this.selectedIndex, dt));
 
         this.confettiTimer -= dt;
         if (this.confettiTimer <= 0) {
             this.confettiTimer = randomRange(2.5, 4.5);
-            const origin = new THREE.Vector3(randomRange(-4, 4), 5.5, randomRange(-2, 1)).add(this.stage.position);
-            this.effects.confetti(origin, 40);
+            this.effects.confetti(new THREE.Vector3(randomRange(-4, 4), 5.5, randomRange(-2, 1)).add(this.stage.position), 40);
         }
 
         this.stage.rotation.y = Math.sin(this.time * 0.25) * 0.08;
-        this.camera.position.set(
-            this.cameraBase.x + Math.sin(this.time * 0.2) * 0.4,
-            this.cameraBase.y + Math.sin(this.time * 0.33) * 0.15,
-            this.cameraBase.z,
-        );
-        this.camera.lookAt(this.lookAt);
+        this.updateCamera(dt);
 
+        this.partyStage.update(dt, this.time);
         this.clouds.update(dt);
         this.effects.update(dt);
     }
 
-    private select(index: number): void {
-        this.selectedIndex = index;
-        const performer = this.performers[index];
-        this.options.onSelectCharacter(performer.model.definition);
+    /** Normal sway, or a close-up of your own character in the wardrobe. */
+    private updateCamera(dt: number): void {
+        const sway = new THREE.Vector3(Math.sin(this.time * 0.2) * 0.4, Math.sin(this.time * 0.33) * 0.15, 0);
+        const desiredPosition = this.cameraBase.clone().add(sway);
+        const desiredLook = this.lookAt.clone();
 
+        if (this.view === 'wardrobe') {
+            const focus = this.performers[this.selectedIndex].model.root.getWorldPosition(new THREE.Vector3());
+            const portrait = this.camera.aspect < 1.15;
+            desiredLook.set(focus.x + (portrait ? 0 : -1.2), focus.y + (portrait ? -1.4 : 1), focus.z);
+            desiredPosition.set(focus.x + (portrait ? 0 : -1.6), focus.y + (portrait ? 1 : 2), focus.z + (portrait ? 9.5 : 6.2));
+        }
+
+        const smoothing = this.cameraPlaced ? damp(4, dt) : 1;
+        this.cameraPlaced = true;
+        this.camera.position.lerp(desiredPosition, smoothing);
+        this.currentLook.lerp(desiredLook, smoothing);
+        this.camera.lookAt(this.currentLook);
+    }
+
+    private showView(view: MenuView): void {
+        if (view !== this.view) {
+            audio.play('click');
+        }
+
+        this.view = view;
+        Object.values(this.panels).forEach((panel) => panel.unmount());
+        this.panels[view].mount();
+    }
+
+    private showLeaderboard(board: string): void {
+        this.showView('leaderboard');
+        this.leaderboard.unmount();
+        this.leaderboard.mount(board);
+    }
+
+
+    /** Re-dresses the cast when the character or hat changes, with a happy hop. */
+    private applyProfile(profile: LocalProfile): void {
+        this.options.onProfileChange(profile);
+        this.selectedIndex = ROSTER.indexOf(profile.character);
+        this.renderTopBar();
+
+        this.performers.forEach((performer, index) => {
+            const hat = index === this.selectedIndex ? profile.hat : null;
+            const position = performer.model.root.position.clone();
+            const scale = performer.model.root.scale.x;
+            this.stage.remove(performer.model.root);
+            performer.model = new CharacterModel(ROSTER[index], hat);
+            performer.model.root.position.copy(position);
+            performer.model.root.scale.setScalar(scale);
+            this.stage.add(performer.model.root);
+        });
+
+        const performer = this.performers[this.selectedIndex];
         if (performer.y === 0) {
             performer.vy = 10;
             performer.model.jump();
         }
 
-        const burst = new THREE.Vector3();
-        performer.model.root.getWorldPosition(burst);
-        burst.y += 1.6;
-        this.effects.confetti(burst, 50);
+        audio.play('pop');
+        this.effects.confetti(performer.model.root.getWorldPosition(new THREE.Vector3()).setY(1.6), 50);
     }
 
     private updatePerformer(performer: Performer, selected: boolean, dt: number): void {
         const { model } = performer;
         const root = model.root;
-
-        // Selected character steps forward and grows a little.
-        const targetZ = selected ? 1.6 : 0;
-        const targetScale = selected ? 1.25 : 1;
         const smoothing = damp(8, dt);
-        root.position.z += (targetZ - root.position.z) * smoothing;
+
+        root.position.z += ((selected ? 1.6 : 0) - root.position.z) * smoothing;
         root.position.x += (performer.homeX - root.position.x) * smoothing;
-        const scale = root.scale.x + (targetScale - root.scale.x) * smoothing;
-        root.scale.setScalar(scale);
+        root.scale.setScalar(root.scale.x + ((selected ? 1.25 : 1) - root.scale.x) * smoothing);
         root.rotation.y += ((selected ? Math.sin(this.time * 1.2) * 0.25 : performer.homeX * -0.08) - root.rotation.y) * smoothing;
 
-        // Idle hopping.
         performer.hopTimer -= dt;
-        const grounded = performer.y === 0;
-        if (grounded && performer.hopTimer <= 0) {
+        if (performer.y === 0 && performer.hopTimer <= 0) {
             performer.vy = selected ? randomRange(7, 9) : randomRange(5, 8);
             performer.hopTimer = selected ? randomRange(0.9, 1.8) : randomRange(1.5, 4);
             model.jump();
         }
 
-        let landed = false;
-        if (performer.vy !== 0 || !grounded) {
+        if (performer.vy !== 0 || performer.y > 0) {
             performer.vy -= GRAVITY * dt;
             performer.y += performer.vy * dt;
 
             if (performer.y <= 0) {
-                landed = true;
                 model.land(Math.abs(performer.vy));
+                if (selected) {
+                    this.effects.landing(root.getWorldPosition(new THREE.Vector3()), 10);
+                }
                 performer.y = 0;
                 performer.vy = 0;
             }
@@ -221,22 +267,13 @@ export class MainMenuScene implements GameScene {
 
         root.position.y = performer.y;
         model.update(dt, { speed: 0, grounded: performer.y === 0, verticalVelocity: performer.vy });
-
-        if (landed && selected) {
-            const feet = new THREE.Vector3();
-            root.getWorldPosition(feet);
-            this.effects.landing(feet, 10);
-        }
     }
 
-    private buildStage(): void {
-        this.scene.add(this.stage);
-
-        this.stage.add(this.partyStage.group);
-
+    private buildCast(): void {
         const spacing = 1.9;
+
         ROSTER.forEach((definition, index) => {
-            const model = new CharacterModel(definition);
+            const model = new CharacterModel(definition, index === this.selectedIndex ? this.options.profile.hat : null);
             const homeX = (index - (ROSTER.length - 1) / 2) * spacing;
             model.root.position.set(homeX, 0, 0);
             this.stage.add(model.root);

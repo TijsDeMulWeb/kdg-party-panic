@@ -9,6 +9,7 @@ export interface NetworkPlayer {
     name: string;
     seat: number;
     character: CharacterDefinition;
+    hat: string | null;
 }
 
 /**
@@ -28,6 +29,7 @@ export interface MinigameNetwork {
 
 export interface MinigameContext {
     character: CharacterDefinition;
+    hat: string | null;
     /** Seeds every gameplay-relevant random choice. Same seed, same game. */
     seed: number;
     /** Shared HUD (score, timer, popups) owned by the runner. */
@@ -59,6 +61,8 @@ export interface Minigame {
 
     /** Countdown finished: gameplay starts now. */
     start(): void;
+    /** Current score, shown live to other players in a party. */
+    getScore(): number;
     /**
      * Called every frame. `elapsed` is the official play time in seconds
      * (server-synchronised in multiplayer), or null outside of play.
@@ -81,5 +85,8 @@ export interface MinigameDefinition {
     instructions: string[];
     /** Name of the action button in this minigame, shown on touch controls. */
     actionLabel: string;
-    create(context: MinigameContext): Minigame;
+    /** Loads the minigame's code on demand, so the first page load stays small. */
+    load(): Promise<MinigameFactory>;
 }
+
+export type MinigameFactory = (context: MinigameContext) => Minigame;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CameraRig } from '../../core/CameraRig';
 import type { InputSnapshot } from '../../core/InputManager';
+import { audio } from '../../audio/AudioManager';
 import { CharacterController } from '../../characters/CharacterController';
 import { CharacterModel } from '../../characters/CharacterModel';
 import { createCloudLayer, createLighting, createSky, type CloudLayer } from '../../design/environment';
@@ -10,7 +11,7 @@ import { WorldWithMovingObstacles } from '../../world/WorldWithMovingObstacles';
 import { createNameTag } from '../../characters/NameTag';
 import { RemoteCharacters } from '../../multiplayer/RemoteCharacters';
 import { SnapshotSender } from '../../multiplayer/SnapshotSender';
-import type { Minigame, MinigameContext, MinigameResult } from '../types';
+import type { Minigame, MinigameContext, MinigameFactory, MinigameResult } from '../types';
 import { ColorArena } from './ColorArena';
 import { CRASH_COLORS } from './colors';
 import { planRounds, reactionBonus, ROUND_POINTS, WARNING_TIME, type RoundPlan } from './rounds';
@@ -81,7 +82,7 @@ export class ColorCrash implements Minigame {
         this.scene.add(this.arena.group);
 
         const spawn = this.arena.tilePosition(spawnTile(context.network?.localSeat));
-        const model = new CharacterModel(context.character);
+        const model = new CharacterModel(context.character, context.hat);
         this.scene.add(model.root);
 
         if (context.network) {
@@ -116,12 +117,16 @@ export class ColorCrash implements Minigame {
         }
 
         this.remotes?.update(dt);
-        this.snapshots?.update(dt, this.player, this.eliminated);
+        this.snapshots?.update(dt, this.player, this.eliminated, this.score);
 
         this.arena.update(dt, this.visualTime);
         this.updateCamera(dt, false);
         this.clouds.update(dt);
         this.effects.update(dt);
+    }
+
+    getScore(): number {
+        return this.score;
     }
 
     isOver(): boolean {
@@ -202,6 +207,7 @@ export class ColorCrash implements Minigame {
         this.step = 'choosing';
         this.arrivedAt = null;
         this.banner.show(color);
+        audio.play('pop');
     }
 
     /** Remembers when the player settled on a safe tile, for the reaction bonus. */
@@ -228,6 +234,7 @@ export class ColorCrash implements Minigame {
         this.banner.dropping();
         this.arena.drop(plan.target);
         this.rig.shake(0.35);
+        audio.play('bump', 1.4);
     }
 
     private resolve(plan: RoundPlan): void {
@@ -244,6 +251,7 @@ export class ColorCrash implements Minigame {
 
             this.context.hud.setScore(this.score);
             this.context.hud.callout(bonus >= 35 ? `Speedy! +${ROUND_POINTS + bonus}` : `+${ROUND_POINTS + bonus}`, 'good');
+            audio.play(bonus >= 35 ? 'bonus' : 'score');
             this.effects.confetti(this.player.position.clone().setY(1.5), 30);
         }
 
@@ -274,6 +282,7 @@ export class ColorCrash implements Minigame {
         this.eliminated = true;
         this.banner.hide();
         this.context.hud.callout('Out!', 'bad');
+        audio.play('out');
         this.rig.shake(0.6);
         this.effects.poof(this.player.position.clone());
         this.player.model.root.visible = false;
@@ -292,3 +301,5 @@ export class ColorCrash implements Minigame {
         }
     }
 }
+
+export const createColorCrash: MinigameFactory = (context) => new ColorCrash(context);

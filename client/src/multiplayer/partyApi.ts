@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { Player, RoomState, RoundInfo } from './types';
+import type { MatchInfo, Player, RoomState, RoundOutcome } from './types';
 
 interface Wrapped<T> {
     data: T;
@@ -10,14 +10,20 @@ export async function fetchCurrentPlayer(): Promise<Player | null> {
 }
 
 /** Creates a guest session, or updates the existing guest's name and character. */
-export async function savePlayer(name: string, character: string): Promise<Player> {
+export async function savePlayer(name: string, character: string, hat: string | null = null): Promise<Player> {
     const current = await fetchCurrentPlayer();
 
     if (current) {
-        return (await apiRequest<Wrapped<Player>>('PATCH', '/api/me', { name, character })).data;
+        return (await apiRequest<Wrapped<Player>>('PATCH', '/api/me', { name, character, hat })).data;
     }
 
-    return (await apiRequest<Wrapped<Player>>('POST', '/api/players', { name, character })).data;
+    const player = (await apiRequest<Wrapped<Player>>('POST', '/api/players', { name, character })).data;
+
+    return hat ? (await apiRequest<Wrapped<Player>>('PATCH', '/api/me', { hat })).data : player;
+}
+
+export async function updateHat(hat: string | null): Promise<Player> {
+    return (await apiRequest<Wrapped<Player>>('PATCH', '/api/me', { hat })).data;
 }
 
 export async function createRoom(): Promise<RoomState> {
@@ -40,6 +46,18 @@ export async function leaveRoom(code: string): Promise<void> {
     await apiRequest<void>('DELETE', `/api/rooms/${code}/memberships`);
 }
 
-export async function startRound(code: string): Promise<RoundInfo> {
-    return (await apiRequest<Wrapped<RoundInfo>>('POST', `/api/rooms/${code}/rounds`)).data;
+export async function startMatch(code: string): Promise<MatchInfo> {
+    return (await apiRequest<Wrapped<MatchInfo>>('POST', `/api/rooms/${code}/matches`)).data;
+}
+
+export async function submitRoundResult(roundId: number, score: number): Promise<RoundOutcome> {
+    return (await apiRequest<Wrapped<RoundOutcome>>('POST', `/api/rounds/${roundId}/results`, { score })).data;
+}
+
+export async function finalizeRound(roundId: number): Promise<RoundOutcome> {
+    return (await apiRequest<Wrapped<RoundOutcome>>('POST', `/api/rounds/${roundId}/finalization`)).data;
+}
+
+export async function fetchRoundOutcome(roundId: number): Promise<RoundOutcome> {
+    return (await apiRequest<Wrapped<RoundOutcome>>('GET', `/api/rounds/${roundId}/results`)).data;
 }

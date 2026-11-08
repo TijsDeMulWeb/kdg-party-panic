@@ -10,6 +10,7 @@ export class GameHud {
     private readonly timerValue: HTMLElement;
     private readonly timer: HTMLElement;
     private readonly callouts: HTMLElement;
+    private readonly scoreboard: HTMLElement;
     private score = 0;
     private shownSeconds = -1;
 
@@ -18,6 +19,7 @@ export class GameHud {
         this.timerValue = el('span', { className: 'game-hud__timer-value', text: '' });
         this.timer = el('div', { className: 'game-hud__timer' }, [this.timerValue]);
         this.callouts = el('div', { className: 'game-hud__callouts' });
+        this.scoreboard = el('ol', { className: 'game-hud__scoreboard' });
 
         this.root = el('div', { className: 'game-hud' }, [
             el('div', { className: 'game-hud__top' }, [
@@ -28,6 +30,7 @@ export class GameHud {
                 this.timer,
                 el('div', { className: 'hud__badge' }, [el('span', { className: 'hud__badge-label', text: title }), el('span', { text: characterName })]),
             ]),
+            this.scoreboard,
             this.callouts,
         ]);
     }
@@ -37,9 +40,12 @@ export class GameHud {
             return;
         }
 
+        const gained = score > this.score;
         this.score = score;
         this.scoreValue.textContent = String(score);
-        this.restartAnimation(this.scoreValue, 'is-bumped');
+        if (gained) {
+            this.restartAnimation(this.scoreValue, 'is-bumped');
+        }
     }
 
     /** Shows whole seconds; the last five seconds pulse in red. */
@@ -64,6 +70,25 @@ export class GameHud {
         const node = el('div', { className: `game-hud__callout game-hud__callout--${tone}`, text });
         this.callouts.append(node);
         node.addEventListener('animationend', () => node.remove());
+    }
+
+    /** Live party ranking in the corner, highest score first. */
+    setScoreboard(rows: { name: string; color: number; score: number; isMe: boolean }[]): void {
+        const sorted = [...rows].sort((a, b) => b.score - a.score);
+        const signature = sorted.map((row) => `${row.name}:${row.score}`).join('|');
+
+        if (this.scoreboard.dataset.signature === signature) {
+            return;
+        }
+
+        this.scoreboard.dataset.signature = signature;
+        this.scoreboard.replaceChildren(
+            ...sorted.map((row) => {
+                const swatch = el('span', { className: 'game-hud__scoreboard-swatch' });
+                swatch.style.background = `#${row.color.toString(16).padStart(6, '0')}`;
+                return el('li', { className: row.isMe ? 'is-me' : '' }, [swatch, el('span', { text: row.name }), el('strong', { text: String(row.score) })]);
+            }),
+        );
     }
 
     setVisible(visible: boolean): void {

@@ -21,7 +21,7 @@ class FinalizeRound
     protected array $pointsByPlacement = [1 => 10, 2 => 7, 3 => 5, 4 => 3];
 
     /** Results screen, standings and the next intro. */
-    protected int $nextRoundDelayMilliseconds = 13000;
+    protected int $nextRoundDelayMilliseconds = 18000;
 
     public function __construct(
         protected ScheduleRound $scheduleRound,

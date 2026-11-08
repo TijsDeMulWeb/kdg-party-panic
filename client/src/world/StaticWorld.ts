@@ -5,6 +5,11 @@ export interface ColliderHandle {
     enabled: boolean;
 }
 
+/** Cylinders can also change size at runtime (e.g. a shrinking arena). */
+export interface CylinderHandle extends ColliderHandle {
+    radius: number;
+}
+
 interface BoxCollider extends ColliderHandle {
     kind: 'box';
     minX: number;
@@ -59,7 +64,7 @@ export class StaticWorld implements MovementWorld {
     }
 
     /** `y` is the base of the cylinder. */
-    addCylinder(x: number, y: number, z: number, radius: number, height: number, options: ColliderOptions = {}): ColliderHandle {
+    addCylinder(x: number, y: number, z: number, radius: number, height: number, options: ColliderOptions = {}): CylinderHandle {
         const collider: CylinderCollider = { kind: 'cylinder', x, z, radius, bottom: y, top: y + height, walkable: options.walkable ?? true, enabled: true };
         this.colliders.push(collider);
 

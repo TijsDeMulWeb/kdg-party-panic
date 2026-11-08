@@ -76,6 +76,17 @@ export class RemoteCharacters {
         }
     }
 
+    /** Where another player currently appears, or null if hidden/offline. */
+    positionOf(playerId: number): THREE.Vector3 | null {
+        const remote = this.remotes.get(playerId);
+
+        if (!remote || !remote.model.root.visible || remote.out) {
+            return null;
+        }
+
+        return remote.model.root.position;
+    }
+
     /** Current positions of visible remote players, for bumping. */
     obstacles(): MovingObstacle[] {
         const result: MovingObstacle[] = [];

@@ -29,6 +29,7 @@ export interface MainMenuOptions {
     onProfileChange(profile: LocalProfile): void;
     onFreePlay(): void;
     onPlayMinigame(minigame: MinigameDefinition): void;
+    onPlayRandom(): void;
     onPlayDaily(minigame: MinigameDefinition): Promise<void>;
     onCreateParty(name: string): Promise<void>;
     onJoinParty(name: string, code: string): Promise<void>;
@@ -70,6 +71,11 @@ export class MainMenuScene implements GameScene {
     private readonly lookAt = new THREE.Vector3(0, 1.3, 0);
     private readonly currentLook = new THREE.Vector3(0, 1.3, 0);
     private cameraPlaced = false;
+    private readonly stageTarget = new THREE.Vector3(3.4, 0, 0);
+    private stageScaleTarget = 1;
+    private landscape = true;
+    private viewport = { width: 1, height: 1 };
+    private layoutTimer = 0;
 
     constructor(private readonly game: Game, private readonly options: MainMenuOptions) {
         this.selectedIndex = Math.max(0, ROSTER.indexOf(options.profile.character));
@@ -102,7 +108,7 @@ export class MainMenuScene implements GameScene {
 
         this.panels = {
             main: menu,
-            arcade: new SoloArcadeMenu(game.uiRoot, { minigames: MINIGAMES, upcoming: UPCOMING_MINIGAMES, onPlay: (minigame) => options.onPlayMinigame(minigame), onBack: back }),
+            arcade: new SoloArcadeMenu(game.uiRoot, { minigames: MINIGAMES, upcoming: UPCOMING_MINIGAMES, onPlay: (minigame) => options.onPlayMinigame(minigame), onRandom: () => options.onPlayRandom(), onBack: back }),
             party: new PartyMenu(game.uiRoot, { defaultName: options.profile.name, onCreate: options.onCreateParty, onJoin: options.onJoinParty, onBack: back }),
             daily: new DailyMenu(game.uiRoot, { onPlay: options.onPlayDaily, onLeaderboard: () => this.showLeaderboard('daily'), onBack: back }),
             leaderboard: this.leaderboard,
@@ -134,8 +140,11 @@ export class MainMenuScene implements GameScene {
         const aspect = width / height;
         this.camera.aspect = aspect;
 
-        if (aspect >= 1.15) {
-            this.stage.position.set(3.4, 0, 0);
+        this.viewport = { width, height };
+        this.landscape = aspect >= 1.15;
+
+        if (this.landscape) {
+            this.stageTarget.set(3.4, 0, 0);
             this.cameraBase.set(0.6, 3.8, 13.5);
             this.lookAt.set(0.6, 1.4, 0);
             this.camera.fov = 40;
@@ -143,12 +152,36 @@ export class MainMenuScene implements GameScene {
             this.camera.fov = 50;
             const halfHorizontalFov = Math.atan(Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * aspect);
             const distance = Math.min(32, Math.max(14, 4.6 / Math.tan(halfHorizontalFov)));
-            this.stage.position.set(0, 0, 0);
+            this.stageTarget.set(0, 0, 0);
+            this.stageScaleTarget = 1;
             this.cameraBase.set(0, distance * 0.3, distance);
             this.lookAt.set(0, 0.2, 0);
         }
 
         this.camera.updateProjectionMatrix();
+        this.layoutCast();
+    }
+
+    /**
+     * Keeps the cast in the free space to the right of whatever panel is
+     * open: wide panels push the stage right and shrink it if needed.
+     */
+    private layoutCast(): void {
+        if (!this.landscape) {
+            return;
+        }
+
+        const panel = document.querySelector('#ui .arcade') ?? document.querySelector('#ui .menu__actions');
+        const { width } = this.viewport;
+        const panelRight = panel ? panel.getBoundingClientRect().right : 0;
+        const freeLeft = Math.min(width * 0.75, panelRight + 24);
+        const visibleWidth = 2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.cameraBase.z * this.camera.aspect;
+        const unitsPerPixel = visibleWidth / width;
+        const freeCenter = (freeLeft + width) / 2;
+        const castWidth = 8.6;
+
+        this.stageTarget.x = this.lookAt.x + (freeCenter - width / 2) * unitsPerPixel;
+        this.stageScaleTarget = Math.min(1, Math.max(0.55, ((width - freeLeft) * unitsPerPixel) / castWidth));
     }
 
     update(dt: number): void {
@@ -162,6 +195,15 @@ export class MainMenuScene implements GameScene {
             this.effects.confetti(new THREE.Vector3(randomRange(-4, 4), 5.5, randomRange(-2, 1)).add(this.stage.position), 40);
         }
 
+        this.layoutTimer -= dt;
+        if (this.layoutTimer <= 0) {
+            this.layoutTimer = 0.25;
+            this.layoutCast();
+        }
+
+        const settle = this.cameraPlaced ? damp(5, dt) : 1;
+        this.stage.position.lerp(this.stageTarget, settle);
+        this.stage.scale.setScalar(this.stage.scale.x + (this.stageScaleTarget - this.stage.scale.x) * settle);
         this.stage.rotation.y = Math.sin(this.time * 0.25) * 0.08;
         this.updateCamera(dt);
 
@@ -198,6 +240,7 @@ export class MainMenuScene implements GameScene {
         this.view = view;
         Object.values(this.panels).forEach((panel) => panel.unmount());
         this.panels[view].mount();
+        this.layoutCast();
     }
 
     private showLeaderboard(board: string): void {

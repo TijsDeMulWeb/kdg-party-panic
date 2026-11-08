@@ -6,7 +6,7 @@ import { MinigameScene, type ResultExtras } from '../scenes/MinigameScene';
 import { LobbyScene } from '../scenes/LobbyScene';
 import { StandingsScene } from '../scenes/StandingsScene';
 import { PodiumScene } from '../scenes/PodiumScene';
-import { findMinigame } from '../minigames/registry';
+import { findMinigame, MINIGAMES } from '../minigames/registry';
 import type { MinigameDefinition, MinigameResult } from '../minigames/types';
 import { PartySession } from '../multiplayer/PartySession';
 import { createMinigameNetwork } from '../multiplayer/minigameNetwork';
@@ -24,6 +24,7 @@ import { randomSeed } from '../utils/random';
 export class GameManager {
     private readonly profile: LocalProfile = loadProfile();
     private party: PartySession | null = null;
+    private lastRandom: string | null = null;
 
     constructor(private readonly game: Game) {}
 
@@ -63,6 +64,7 @@ export class GameManager {
                 onProfileChange: (profile) => saveProfile(profile),
                 onFreePlay: () => this.startFreePlay(),
                 onPlayMinigame: (minigame) => void this.startSolo(minigame),
+                onPlayRandom: () => void this.startRandom(),
                 onPlayDaily: (minigame) => this.startDaily(minigame),
                 onCreateParty: (name) => this.openParty(name, null),
                 onJoinParty: (name, code) => this.openParty(name, code),
@@ -71,7 +73,7 @@ export class GameManager {
     }
 
     /** Solo Arcade. Uses a server run (seed + leaderboard) when online, a local seed otherwise. */
-    async startSolo(minigame: MinigameDefinition, fixedSeed?: number): Promise<void> {
+    async startSolo(minigame: MinigameDefinition, fixedSeed?: number, replay?: () => void): Promise<void> {
         const [factory, run] = await Promise.all([minigame.load(), fixedSeed === undefined ? startRun(this.profile, minigame.id) : Promise.resolve(null)]);
 
         void this.game.scenes.switchTo(
@@ -82,10 +84,19 @@ export class GameManager {
                 hat: this.profile.hat,
                 seed: fixedSeed ?? run?.seed ?? randomSeed(),
                 resultExtras: run ? this.leaderboardExtras(run) : undefined,
-                onReplay: () => void this.startSolo(minigame, fixedSeed),
+                onReplay: replay ?? (() => void this.startSolo(minigame, fixedSeed)),
                 onExit: () => this.showMainMenu('arcade'),
             }),
         );
+    }
+
+    /** A random minigame, never the same one twice in a row. "Play again" rolls again. */
+    async startRandom(): Promise<void> {
+        const options = MINIGAMES.filter((minigame) => minigame.id !== this.lastRandom);
+        const minigame = options[Math.floor(Math.random() * options.length)];
+        this.lastRandom = minigame.id;
+
+        await this.startSolo(minigame, undefined, () => void this.startRandom());
     }
 
     /** Daily Challenge: everyone plays the same seed; it needs the server. */

@@ -9,6 +9,7 @@ export function createMinigameNetwork(session: PartySession): MinigameNetwork {
         .map((player) => ({ id: player.id, name: player.name, seat: player.seat, character: findCharacter(player.character), hat: player.hat }));
 
     return {
+        localPlayerId: session.player.id,
         localSeat: session.me?.seat ?? 0,
         remotePlayers,
         serverNow: () => session.clock.now(),

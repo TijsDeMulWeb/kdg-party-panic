@@ -45,7 +45,7 @@ class MatchesTest extends TestCase
         $rounds = $match->rounds;
 
         $this->assertCount(5, $rounds);
-        $this->assertCount(4, $rounds->pluck('minigame_id')->unique());
+        $this->assertCount(5, $rounds->pluck('minigame_id')->unique());
         $this->assertNotNull($rounds[0]->starts_at);
         $this->assertNull($rounds[1]->starts_at);
         $this->assertCount(3, $match->players);

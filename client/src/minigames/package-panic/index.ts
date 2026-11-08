@@ -10,7 +10,8 @@ export const packagePanic: MinigameDefinition = {
     actionLabel: 'Shove',
     instructions: [
         'Parcels roll down the conveyor towards three bins.',
-        'Walk into a parcel from the side to push it into the lane of the bin with the same colour (or symbol).',
+        'Walk into a parcel to push it, or press Shove (Shift / E) to kick the nearest one a lane over in the direction you face.',
+        'Every parcel must reach the bin with the same colour (or symbol).',
         'Correct deliveries in a row build a combo. Watch out: the bins shuffle!',
     ],
     load: async () => (await import('./PackagePanic')).createPackagePanic,

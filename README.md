@@ -2,7 +2,7 @@
 
 # Party Panic
 
-Browser-based multiplayer arcade party game. 1 to 4 players, five short minigames per match, cartoon 3D style.
+Browser-based multiplayer arcade party game. 1 to 4 players, nine short minigames, five per match, cartoon 3D style.
 
 ## Layout
 
@@ -37,10 +37,12 @@ To use Pusher instead of Reverb: set `BROADCAST_CONNECTION=pusher` and the `PUSH
 
 Backend tests: `cd backend && php artisan test`.
 
+Scheduled tasks: `php artisan schedule:work` locally (or `schedule:run` from cron) runs `rooms:prune-stale` hourly.
+
 Dev shortcuts (only in `npm run dev`):
 
 - `?scene=freeplay` opens the practice island.
-- `?scene=color-crash` opens a minigame directly. Add `&seed=42` for a fixed layout.
+- `?scene=<minigame>` opens a minigame directly (`color-crash`, `package-panic`, `big-ball`, `vacuum-chaos`, `paint-party`, `meteor-mayhem`, `sky-tower`, `fruit-frenzy`, `bumper-sumo`). Add `&seed=42` for a fixed layout.
 
 ## Controls
 
@@ -48,7 +50,7 @@ Dev shortcuts (only in `npm run dev`):
 | --- | --- | --- | --- |
 | Move | WASD / arrows | Left stick | Left joystick |
 | Jump | Space | A | Jump button |
-| Action (dash) | Shift / E / J | X or B | Dash button |
+| Action (dash, shove, vacuum) | Shift / E / J | X or B | Action button |
 | Camera | Drag with mouse | Right stick | Drag on screen |
 | Back to menu | Esc | | Menu button |
 

@@ -75,6 +75,15 @@ export class CharacterController {
         return events;
     }
 
+    /** Launches the character (hits, bumps). Leaves the ground so friction doesn't eat it at once. */
+    knockback(vx: number, vz: number, vy = 5): void {
+        this.state.velocity.x = vx;
+        this.state.velocity.z = vz;
+        this.state.velocity.y = vy;
+        this.state.grounded = false;
+        this.model.jump();
+    }
+
     teleport(position: THREE.Vector3, facing = 0): void {
         const fresh = createMovementState(position, facing);
         Object.assign(this.state, fresh);

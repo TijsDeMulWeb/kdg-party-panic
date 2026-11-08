@@ -59,6 +59,18 @@ export class CameraRig {
         this.pitch = Math.atan2(height, distance);
     }
 
+    /** Smoothly turns the orbit towards `yaw` (shortest way round). */
+    turnTowards(yaw: number, dt: number, sharpness = 3): void {
+        let delta = (yaw - this.yaw) % (Math.PI * 2);
+        if (delta > Math.PI) {
+            delta -= Math.PI * 2;
+        }
+        if (delta < -Math.PI) {
+            delta += Math.PI * 2;
+        }
+        this.yaw += delta * damp(sharpness, dt);
+    }
+
     rotate(deltaX: number, deltaY: number): void {
         const { rotateSpeed, minPitch, maxPitch } = this.options;
         this.yaw -= deltaX * rotateSpeed;

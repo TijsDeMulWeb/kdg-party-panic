@@ -17,10 +17,13 @@ import { StaticWorld } from '../../world/StaticWorld';
 import { WorldWithMovingObstacles } from '../../world/WorldWithMovingObstacles';
 import type { Minigame, MinigameContext, MinigameFactory, MinigameResult } from '../types';
 import { BELT_HALF_WIDTH, Station } from './Station';
-import { BELT_LENGTH, BIN_SHUFFLE_TIMES, beltSpeed, binsAt, deliveryPoints, laneAt, laneCenter, planBins, planPackages, type BinLayout, type PackagePlan } from './rules';
+import { BELT_LENGTH, BIN_SHUFFLE_TIMES, beltSpeed, binsAt, deliveryPoints, LANE_COUNT, laneAt, laneCenter, planBins, planPackages, type BinLayout, type PackagePlan } from './rules';
 
 const PACKAGE_HALF = 0.55;
 const STATION_SPACING = 10;
+/** How close (centre to centre) a package must be to shove it. */
+const SHOVE_REACH = 1.9;
+const SHOVE_SPEED = 14;
 const NEUTRAL: InputSnapshot = { moveX: 0, moveY: 0, jumpPressed: false, jumpHeld: false, actionPressed: false, actionHeld: false, lookX: 0, lookY: 0 };
 
 interface LivePackage {
@@ -31,6 +34,8 @@ interface LivePackage {
     state: 'riding' | 'falling';
     fallTime: number;
     wobble: number;
+    /** Lane centre the package slides to after a shove. */
+    targetX: number | null;
 }
 
 const packageGeometry = new RoundedBoxGeometry(PACKAGE_HALF * 2, PACKAGE_HALF * 1.6, PACKAGE_HALF * 2, 2, 0.08);
@@ -140,7 +145,13 @@ class PackagePanic implements Minigame {
             this.shuffleBins();
         }
 
-        const events = this.player.update(dt, playing ? input : NEUTRAL, this.rig.getYaw());
+        // The action button shoves packages here instead of dashing.
+        const controls = playing ? { ...input, actionPressed: false } : NEUTRAL;
+        const events = this.player.update(dt, controls, this.rig.getYaw());
+
+        if (playing && input.actionPressed) {
+            this.shove();
+        }
         if (events.landed) {
             this.effects.landing(this.player.position, events.landingSpeed);
         }
@@ -210,7 +221,7 @@ class PackagePanic implements Minigame {
             const x = this.originX + laneCenter(plan.lane);
             mesh.position.set(x, PACKAGE_HALF * 0.8, -BELT_LENGTH + PACKAGE_HALF);
             this.scene.add(mesh);
-            this.packages.push({ plan, mesh, x, z: -BELT_LENGTH + PACKAGE_HALF, state: 'riding', fallTime: 0, wobble: 1 });
+            this.packages.push({ plan, mesh, x, z: -BELT_LENGTH + PACKAGE_HALF, state: 'riding', fallTime: 0, wobble: 1, targetX: null });
             audio.play('pop', 0.4);
         }
     }
@@ -237,6 +248,15 @@ class PackagePanic implements Minigame {
 
             if (item.state === 'riding') {
                 item.z += speed * dt;
+
+                if (item.targetX !== null) {
+                    const step = SHOVE_SPEED * dt;
+                    const remaining = item.targetX - item.x;
+                    item.x = Math.abs(remaining) <= step ? item.targetX : item.x + Math.sign(remaining) * step;
+                    if (item.x === item.targetX) {
+                        item.targetX = null;
+                    }
+                }
 
                 if (item.z - PACKAGE_HALF > 0) {
                     item.state = 'falling';
@@ -292,6 +312,7 @@ class PackagePanic implements Minigame {
                 const wanted = position.x + direction * (radius + PACKAGE_HALF);
                 const limit = this.originX + direction * (BELT_HALF_WIDTH - PACKAGE_HALF);
                 item.x = direction > 0 ? Math.min(wanted, limit) : Math.max(wanted, limit);
+                item.targetX = null;
                 item.wobble = Math.max(item.wobble, 0.5);
 
                 if (item.x === limit) {
@@ -303,6 +324,47 @@ class PackagePanic implements Minigame {
             const direction = position.z < item.z ? -1 : 1;
             position.z = item.z + direction * (PACKAGE_HALF + radius);
         }
+    }
+
+    /**
+     * Kicks the nearest package one lane over: in the direction you face,
+     * or away from you when you stand straight in front of it. This is how
+     * a package stuck against a side rail gets back out.
+     */
+    private shove(): void {
+        const { position, facing } = this.player.state;
+        let nearest: LivePackage | null = null;
+        let nearestDistance = SHOVE_REACH;
+
+        for (const item of this.packages) {
+            const distance = Math.hypot(item.x - position.x, item.z - position.z);
+            if (item.state === 'riding' && distance < nearestDistance) {
+                nearest = item;
+                nearestDistance = distance;
+            }
+        }
+
+        this.player.model.jump();
+        audio.play('dash', 0.6);
+
+        if (!nearest) {
+            return;
+        }
+
+        const facingX = Math.sin(facing);
+        const awayFromPlayer = nearest.x >= position.x ? 1 : -1;
+        const direction = Math.abs(facingX) > 0.35 ? Math.sign(facingX) : awayFromPlayer;
+        const lane = Math.min(LANE_COUNT - 1, Math.max(0, laneAt((nearest.targetX ?? nearest.x) - this.originX) + direction));
+        const targetX = this.originX + laneCenter(lane);
+
+        if (Math.abs(targetX - nearest.x) < 0.05) {
+            audio.play('bump', 0.6);
+            return;
+        }
+
+        nearest.targetX = targetX;
+        nearest.wobble = 1;
+        this.effects.dash(new THREE.Vector3(nearest.x, 0.6, nearest.z), this.context.character.body);
     }
 
     private deliver(item: LivePackage): void {

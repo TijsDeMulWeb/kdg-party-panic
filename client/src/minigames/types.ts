@@ -17,6 +17,7 @@ export interface NetworkPlayer {
  * Minigames never talk to Pusher or Laravel directly.
  */
 export interface MinigameNetwork {
+    localPlayerId: number;
     localSeat: number;
     remotePlayers: readonly NetworkPlayer[];
     /** Server-synchronised time in milliseconds. */

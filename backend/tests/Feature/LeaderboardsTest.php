@@ -20,7 +20,7 @@ class LeaderboardsTest extends TestCase
 
         $run = $this->actingAs($player)->postJson(route('runs.store', 'color-crash'))->assertCreated()->json('data');
 
-        $this->actingAs($player)->patchJson(route('runs.update', $run['id']), ['score' => 5000])->assertJsonValidationErrors('score');
+        $this->actingAs($player)->patchJson(route('runs.update', $run['id']), ['score' => 1051])->assertJsonValidationErrors('score');
         $this->actingAs($player)->patchJson(route('runs.update', $run['id']), ['score' => 640])->assertOk()->assertJsonPath('data.rank', 1);
         $this->actingAs($player)->patchJson(route('runs.update', $run['id']), ['score' => 700])->assertJsonValidationErrors('score');
     }

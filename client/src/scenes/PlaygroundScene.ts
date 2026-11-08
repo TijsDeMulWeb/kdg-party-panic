@@ -72,12 +72,14 @@ export class PlaygroundScene implements GameScene {
     enter(): void {
         this.hud.mount();
         this.game.input.setGameplayControls(true, 'Dash');
+        this.game.input.setDragToLook(true);
         window.addEventListener('keydown', this.onKeyDown);
     }
 
     exit(): void {
         window.removeEventListener('keydown', this.onKeyDown);
         this.game.input.setGameplayControls(false);
+        this.game.input.setDragToLook(false);
         this.hud.unmount();
     }
 

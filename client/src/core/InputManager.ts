@@ -40,6 +40,8 @@ export class InputManager {
     private previousJump = false;
     private previousAction = false;
     private enabled = true;
+    /** Only scenes where dragging turns the camera show the grabbing hand. */
+    private dragToLook = false;
 
     readonly snapshot: InputSnapshot = {
         moveX: 0,
@@ -67,6 +69,13 @@ export class InputManager {
     /** Shows or hides on-screen touch controls (only visible on touch devices). */
     setGameplayControls(visible: boolean, actionLabel = 'Dash'): void {
         this.touch.setVisible(visible, actionLabel);
+    }
+
+    setDragToLook(enabled: boolean): void {
+        this.dragToLook = enabled;
+        if (!enabled) {
+            this.surface.classList.remove('is-dragging');
+        }
     }
 
     /** Disabled input reports neutral values, e.g. during countdowns. */
@@ -180,7 +189,7 @@ export class InputManager {
 
         this.dragPointer = event.pointerId;
         this.lastPointer = { x: event.clientX, y: event.clientY };
-        this.surface.classList.add('is-dragging');
+        this.surface.classList.toggle('is-dragging', this.dragToLook);
     };
 
     private readonly onPointerMove = (event: PointerEvent): void => {

@@ -1,7 +1,7 @@
 /*
  * Cartoon cursors. The PNG fallback comes first; browsers that understand
  * image-set() use the sharp 2x version on retina screens. Hotspots are the
- * arrow tip (6 5) and the fingertip (10 2).
+ * arrow tip (6 5), the fingertip (10 2) and the middle of the fist (16 14).
  */
 :root {
     --pp-cursor-arrow: url('/cursors/arrow.png') 6 5, auto;
@@ -34,5 +34,6 @@ input[type='password'] {
 }
 
 #app canvas.is-dragging {
-    cursor: grabbing;
+    cursor: url('/cursors/grab.png') 16 14, grabbing;
+    cursor: image-set(url('/cursors/grab.png') 1x, url('/cursors/grab@2x.png') 2x) 16 14, grabbing;
 }

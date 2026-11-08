@@ -12,14 +12,30 @@ backend/   Laravel API + Pusher broadcasting (phase 3)
 docs/      Architecture notes
 ```
 
-## Running the client
+## Running locally
+
+Solo play only needs the client. Private parties also need the Laravel backend (Herd) and a realtime server (Reverb locally, Pusher in production).
 
 ```bash
+# Backend: served by Herd at http://party-panic.test
+cd backend
+composer install
+cp .env.example .env && php artisan key:generate   # set DB_* for MySQL
+php artisan migrate --seed
+php artisan reverb:start                           # realtime server on :8080
+
+# Client
 cd client
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # typecheck + production build
+cp .env.example .env.local                         # VITE_PUSHER_KEY = REVERB_APP_KEY
+npm run dev                                        # http://localhost:5173
 ```
+
+The Vite dev server proxies `/api` and `/broadcasting` to the backend, so the game and the API share one origin (session cookie, CSRF).
+
+To use Pusher instead of Reverb: set `BROADCAST_CONNECTION=pusher` and the `PUSHER_*` keys in `backend/.env`, and `VITE_PUSHER_KEY` and `VITE_PUSHER_CLUSTER` (empty host and port) in the client.
+
+Backend tests: `cd backend && php artisan test`.
 
 Dev shortcuts (only in `npm run dev`):
 

@@ -12,5 +12,5 @@ if (!container || !uiRoot) {
 const game = new Game(container, uiRoot);
 const manager = new GameManager(game);
 
-manager.start();
+void manager.start();
 game.start();

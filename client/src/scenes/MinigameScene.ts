@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import type { Game } from '../core/Game';
 import type { GameScene } from '../core/GameScene';
 import type { CharacterDefinition } from '../characters/roster';
-import type { Minigame, MinigameDefinition, MinigameResult } from '../minigames/types';
+import type { Minigame, MinigameDefinition, MinigameNetwork, MinigameResult } from '../minigames/types';
 import { getPersonalBest, submitPersonalBest } from '../scoring/personalBest';
 import { el } from '../ui/dom';
 import { Countdown } from '../ui/minigame/Countdown';
@@ -10,10 +10,18 @@ import { GameHud } from '../ui/minigame/GameHud';
 import { IntroCard } from '../ui/minigame/IntroCard';
 import { ResultsCard } from '../ui/minigame/ResultsCard';
 
+/** Party rounds start at a server-chosen moment instead of on a button press. */
+export interface MinigameSchedule {
+    /** Server time (ms) at which play begins. */
+    startsAt: number;
+    network: MinigameNetwork;
+}
+
 export interface MinigameSceneOptions {
     definition: MinigameDefinition;
     character: CharacterDefinition;
     seed: number;
+    schedule?: MinigameSchedule;
     onReplay(): void;
     onExit(): void;
 }
@@ -27,7 +35,8 @@ const ENDING_SECONDS = 1.4;
 /**
  * Runs any minigame through the same flow:
  * intro card → 3-2-1 countdown → timed play → results.
- * Minigames only implement their own world and rules.
+ * Solo: the player starts it and the local clock times it.
+ * Party: Laravel picks the start time and every client follows the server clock.
  */
 export class MinigameScene implements GameScene {
     private readonly minigame: Minigame;
@@ -35,21 +44,22 @@ export class MinigameScene implements GameScene {
     private readonly overlay: HTMLElement;
     private readonly layer: HTMLElement;
     private readonly countdown = new Countdown();
+    private readonly duration: number;
     private phase: Phase = 'intro';
     private phaseTime = 0;
-    private remaining: number;
+    private localElapsed = 0;
     private intro: IntroCard | null = null;
     private results: ResultsCard | null = null;
 
     constructor(private readonly game: Game, private readonly options: MinigameSceneOptions) {
-        const { definition, character, seed } = options;
+        const { definition, character, seed, schedule } = options;
 
         this.hud = new GameHud(definition.name, character.name, options.onExit);
         this.overlay = el('div', { className: 'minigame-overlay' });
         this.layer = el('div', { className: 'minigame-layer' }, [this.hud.root, this.overlay]);
-        this.remaining = definition.durationSeconds;
+        this.duration = definition.durationSeconds;
 
-        this.minigame = definition.create({ character, seed, hud: this.hud, overlay: this.overlay });
+        this.minigame = definition.create({ character, seed, hud: this.hud, overlay: this.overlay, network: schedule?.network });
     }
 
     get scene(): THREE.Scene {
@@ -60,15 +70,22 @@ export class MinigameScene implements GameScene {
         return this.minigame.camera;
     }
 
+    private get isParty(): boolean {
+        return this.options.schedule !== undefined;
+    }
+
     enter(): void {
         this.game.uiRoot.append(this.layer);
         this.game.input.setEnabled(false);
         this.game.input.setGameplayControls(true, this.options.definition.actionLabel);
-        this.hud.setTime(this.remaining);
+        this.hud.setTime(this.duration);
         this.hud.setVisible(false);
         window.addEventListener('keydown', this.onKeyDown);
 
-        this.intro = new IntroCard(this.options.definition, getPersonalBest(this.options.definition.id), () => this.setPhase('countdown'));
+        const { definition } = this.options;
+        this.intro = this.isParty
+            ? new IntroCard(definition, null)
+            : new IntroCard(definition, getPersonalBest(definition.id), () => this.setPhase('countdown'));
         this.intro.mount(this.game.uiRoot);
     }
 
@@ -89,29 +106,42 @@ export class MinigameScene implements GameScene {
 
     update(dt: number): void {
         this.phaseTime += dt;
-        const playing = this.phase === 'playing';
+        const untilStart = this.secondsUntilStart(dt);
+
+        if (this.phase === 'intro' && this.isParty) {
+            this.intro?.setStatus(`Starting in ${Math.max(0, Math.ceil(untilStart - COUNTDOWN_SECONDS))}…`);
+            if (untilStart <= COUNTDOWN_SECONDS) {
+                this.intro?.unmount();
+                this.setPhase('countdown');
+            }
+        }
 
         if (this.phase === 'countdown') {
-            this.countdown.update(COUNTDOWN_SECONDS - this.phaseTime);
-            if (this.phaseTime >= COUNTDOWN_SECONDS) {
+            this.countdown.update(untilStart);
+            if (untilStart <= 0) {
                 this.setPhase('playing');
             }
         }
 
-        if (playing) {
-            this.remaining = Math.max(0, this.remaining - dt);
-            this.hud.setTime(this.remaining);
-            // Keep "GO!" on screen for a moment after the start.
-            this.countdown.update(-this.phaseTime);
+        const elapsed = this.phase === 'playing' ? Math.min(this.duration, -untilStart) : null;
+        const remaining = elapsed === null ? this.duration : this.duration - elapsed;
+
+        if (this.phase === 'playing') {
+            this.hud.setTime(remaining);
+            this.countdown.update(untilStart);
             if (this.phaseTime > 0.7) {
                 this.countdown.unmount();
             }
         }
 
-        this.minigame.update(dt, this.game.input.snapshot, playing);
+        this.minigame.update(dt, this.game.input.snapshot, elapsed);
 
-        if (playing && (this.remaining <= 0 || this.minigame.isOver())) {
-            this.setPhase('ending');
+        if (this.phase === 'playing') {
+            // In a party an eliminated player keeps watching until time is up.
+            const finishedEarly = !this.isParty && this.minigame.isOver();
+            if (remaining <= 0 || finishedEarly) {
+                this.setPhase('ending', remaining <= 0);
+            }
         }
 
         if (this.phase === 'ending' && this.phaseTime >= ENDING_SECONDS) {
@@ -119,7 +149,27 @@ export class MinigameScene implements GameScene {
         }
     }
 
-    private setPhase(phase: Phase): void {
+    /** Seconds until play starts (negative once playing). */
+    private secondsUntilStart(dt: number): number {
+        const { schedule } = this.options;
+
+        if (schedule) {
+            return (schedule.startsAt - schedule.network.serverNow()) / 1000;
+        }
+
+        if (this.phase === 'countdown') {
+            return COUNTDOWN_SECONDS - this.phaseTime;
+        }
+
+        if (this.phase === 'playing') {
+            this.localElapsed += dt;
+            return -this.localElapsed;
+        }
+
+        return COUNTDOWN_SECONDS;
+    }
+
+    private setPhase(phase: Phase, timeUp = false): void {
         this.phase = phase;
         this.phaseTime = 0;
 
@@ -129,6 +179,7 @@ export class MinigameScene implements GameScene {
         }
 
         if (phase === 'playing') {
+            this.localElapsed = 0;
             this.game.input.setEnabled(true);
             this.minigame.start();
         }
@@ -136,7 +187,7 @@ export class MinigameScene implements GameScene {
         if (phase === 'ending') {
             this.game.input.setEnabled(false);
             this.countdown.unmount();
-            if (this.remaining <= 0) {
+            if (timeUp) {
                 this.hud.callout("Time's up!", 'neutral');
             }
         }
@@ -148,7 +199,7 @@ export class MinigameScene implements GameScene {
 
     private showResults(result: MinigameResult): void {
         const { definition } = this.options;
-        const isRecord = result.score > 0 && submitPersonalBest(definition.id, result.score);
+        const isRecord = !this.isParty && result.score > 0 && submitPersonalBest(definition.id, result.score);
 
         this.hud.setVisible(false);
         this.game.input.setGameplayControls(false);
@@ -157,6 +208,7 @@ export class MinigameScene implements GameScene {
             best: getPersonalBest(definition.id),
             isRecord,
             accent: definition.accent,
+            mode: this.isParty ? 'party' : 'solo',
             onReplay: this.options.onReplay,
             onExit: this.options.onExit,
         });

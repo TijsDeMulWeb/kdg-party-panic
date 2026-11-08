@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "pusher-js": "^8.6.0",
     "three": "^0.187.0"
   },
   "devDependencies": {

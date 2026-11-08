@@ -1,6 +1,7 @@
 @import "./styles/cards.css";
 @import "./styles/arcade.css";
 @import "./styles/minigame.css";
+@import "./styles/party.css";
 
 
 /* Party Panic design tokens. Mirrors design/palette.ts. */

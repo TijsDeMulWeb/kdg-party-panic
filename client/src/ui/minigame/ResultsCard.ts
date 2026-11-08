@@ -6,6 +6,8 @@ export interface ResultsCardOptions {
     best: number | null;
     isRecord: boolean;
     accent: string;
+    /** Party rounds show a single "Back to lobby" button and no personal best. */
+    mode: 'solo' | 'party';
     onReplay(): void;
     onExit(): void;
 }
@@ -21,19 +23,23 @@ export class ResultsCard {
 
         this.root = el('div', { className: 'overlay' }, [
             el('div', { className: 'card results-card' }, [
-                el('span', { className: 'card__eyebrow', text: 'Solo Arcade' }),
+                el('span', { className: 'card__eyebrow', text: options.mode === 'solo' ? 'Solo Arcade' : 'Private Party' }),
                 el('h2', { className: 'card__title', text: result.title }),
                 isRecord ? el('span', { className: 'results-card__record', text: 'New personal best!' }) : null,
                 el('div', { className: 'results-card__score' }, [el('span', { className: 'results-card__score-label', text: 'Score' }), el('span', { className: 'results-card__score-value', text: String(result.score) })]),
                 el(
                     'dl',
                     { className: 'results-card__stats' },
-                    [...result.stats, { label: 'Personal best', value: best === null ? 'None' : String(best) }].flatMap((stat) => [el('dt', { text: stat.label }), el('dd', { text: stat.value })]),
+                    [...result.stats, ...(options.mode === 'solo' ? [{ label: 'Personal best', value: best === null ? 'None' : String(best) }] : [])].flatMap((stat) => [el('dt', { text: stat.label }), el('dd', { text: stat.value })]),
                 ),
-                el('div', { className: 'card__footer' }, [
-                    el('button', { className: 'pp-button', text: 'Arcade', onClick: () => options.onExit() }),
-                    el('button', { className: 'pp-button pp-button--primary', text: 'Play again', onClick: () => options.onReplay() }),
-                ]),
+                options.mode === 'solo'
+                    ? el('div', { className: 'card__footer' }, [
+                          el('button', { className: 'pp-button', text: 'Arcade', onClick: () => options.onExit() }),
+                          el('button', { className: 'pp-button pp-button--primary', text: 'Play again', onClick: () => options.onReplay() }),
+                      ])
+                    : el('div', { className: 'card__footer card__footer--center' }, [
+                          el('button', { className: 'pp-button pp-button--primary', text: 'Back to lobby', onClick: () => options.onExit() }),
+                      ]),
             ]),
         ]);
         this.root.style.setProperty('--card-accent', options.accent);

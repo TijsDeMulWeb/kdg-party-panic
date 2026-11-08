@@ -2,6 +2,29 @@ import type * as THREE from 'three';
 import type { CharacterDefinition } from '../characters/roster';
 import type { InputSnapshot } from '../core/InputManager';
 import type { GameHud } from '../ui/minigame/GameHud';
+import type { PlayerSnapshot } from '../multiplayer/types';
+
+export interface NetworkPlayer {
+    id: number;
+    name: string;
+    seat: number;
+    character: CharacterDefinition;
+}
+
+/**
+ * Everything a minigame needs to play with others. Absent in solo play.
+ * Minigames never talk to Pusher or Laravel directly.
+ */
+export interface MinigameNetwork {
+    localSeat: number;
+    remotePlayers: readonly NetworkPlayer[];
+    /** Server-synchronised time in milliseconds. */
+    serverNow(): number;
+    send(snapshot: Omit<PlayerSnapshot, 'p'>): void;
+    onSnapshot(listener: (playerId: number, snapshot: PlayerSnapshot) => void): () => void;
+    onPresence(listener: (online: ReadonlySet<number>) => void): () => void;
+    isOnline(playerId: number): boolean;
+}
 
 export interface MinigameContext {
     character: CharacterDefinition;
@@ -11,6 +34,7 @@ export interface MinigameContext {
     hud: GameHud;
     /** Container for minigame-specific overlays. Cleared by the runner. */
     overlay: HTMLElement;
+    network?: MinigameNetwork;
 }
 
 export interface MinigameStat {
@@ -35,8 +59,11 @@ export interface Minigame {
 
     /** Countdown finished: gameplay starts now. */
     start(): void;
-    /** Called every frame. `playing` is false during intro, countdown and after the end. */
-    update(dt: number, input: InputSnapshot, playing: boolean): void;
+    /**
+     * Called every frame. `elapsed` is the official play time in seconds
+     * (server-synchronised in multiplayer), or null outside of play.
+     */
+    update(dt: number, input: InputSnapshot, elapsed: number | null): void;
     /** True once the player can no longer change their score (eliminated, all rounds done). */
     isOver(): boolean;
     getResult(): MinigameResult;

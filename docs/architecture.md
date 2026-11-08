@@ -18,6 +18,7 @@ effects/           Pooled instanced particles and named presets (landing, dash, 
 scenes/            MainMenuScene, PlaygroundScene, MinigameScene (runner for any minigame).
 minigames/         One folder per minigame plus types.ts and registry.ts.
 scoring/           Personal bests (local until the backend exists).
+multiplayer/       Laravel API client, server clock, Pusher connection, PartySession, remote players.
 ui/                DOM overlays (menu, HUD, touch controls, fades). Styles in ui/styles.css.
 utils/             Math and storage helpers.
 ```
@@ -47,3 +48,17 @@ A minigame is a folder in `minigames/` that exports a `MinigameDefinition` (name
 **Rules are separated from rendering.** Each minigame keeps its rules in a pure module (`color-crash/rounds.ts`): schedule, layouts and scoring, driven by a seed via `utils/random.ts`. Same seed gives the same game, which is what multiplayer rooms and daily challenges need, and lets the backend compute the maximum possible score for a seed to reject impossible submissions.
 
 **Accessibility.** Color Crash pairs every colour with a symbol, so it is playable without telling colours apart.
+
+## Multiplayer (Laravel + Pusher protocol)
+
+Laravel is the authority for everything that is not movement: guest players, rooms, seats, characters, ready states, which minigame is played, its seed and its exact start time. Realtime traffic goes over a Pusher-protocol presence channel per room (`presence-room.{code}`): Pusher Channels in production, Laravel Reverb locally. The client uses `pusher-js` directly, no Echo.
+
+- **Guests are users.** A guest is a `users` row without email or password, logged in with the normal session guard. Phase 6 can upgrade the same row to a full account.
+- **Server events**: `room.updated` (full roster after any change) and `round.starting` (minigame, seed, `starts_at` in server ms). Both are `ShouldBroadcastNow`, so no queue worker is needed.
+- **Client events**: each client sends its own movement as `client-snapshot` about 9 times per second (Pusher's limit is 10 per second per client). Others render it 150 ms in the past and interpolate between snapshots.
+- **One clock.** Clients estimate their offset to server time via `GET /api/clock` (lowest round trip of 5 samples). Countdown, play time and tile drops all follow the server clock, so every client drops the same tiles at the same moment.
+- **Same seed, same game.** The round's seed drives the minigame's pure rules module, so all clients build identical layouts without sending them.
+- **Bumping without authority.** Each client pushes only its own character out of the others (`WorldWithMovingObstacles`). Symmetric, and nobody moves someone else.
+- **Disconnects.** Presence shows a player as offline immediately. Laravel removes members who are no longer subscribed when someone joins a full room or the host starts (it asks the Pusher/Reverb HTTP API who is in the channel), with a 15 second grace period for players who are still connecting. Reloading the page returns to the lobby via the remembered room code and the session cookie.
+
+**Trade-off.** Clients are authoritative over their own movement and survival. Fine for private parties among friends; scores that go on global leaderboards need extra validation (phase 6).

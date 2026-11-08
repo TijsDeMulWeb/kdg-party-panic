@@ -1,0 +1,242 @@
+/* Private Party: create/join form and lobby. */
+
+.pp-input {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    border: 3px solid var(--pp-ink);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--pp-ink);
+    font-family: var(--pp-font-body);
+    font-size: 20px;
+    font-weight: 800;
+    pointer-events: auto;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.pp-input:focus {
+    outline: 4px solid var(--pp-sun);
+    outline-offset: 2px;
+}
+
+.pp-input--code {
+    font-family: var(--pp-font-display);
+    font-size: 28px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+}
+
+.pp-input--code::placeholder {
+    color: rgb(43 35 64 / 0.3);
+}
+
+.party-menu__panel {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    border: 3px solid var(--pp-ink);
+    border-radius: var(--pp-radius);
+    background: var(--pp-cream);
+    box-shadow: var(--pp-shadow-drop);
+    pointer-events: auto;
+}
+
+.party-menu__panel .pp-button {
+    justify-content: center;
+}
+
+.party-menu__label {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgb(43 35 64 / 0.6);
+}
+
+.party-menu__hint {
+    margin: 0;
+    font-weight: 700;
+}
+
+.party-menu__join {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+}
+
+.party-menu__error {
+    min-height: 1.4em;
+    margin: 0;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 0 rgb(43 35 64 / 0.7);
+}
+
+.pp-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ---------- Lobby ---------- */
+
+.lobby__code {
+    display: grid;
+    justify-items: start;
+    gap: 2px;
+    padding: 8px 18px;
+    border: 3px solid var(--pp-ink);
+    border-radius: var(--pp-radius);
+    background: var(--pp-sun);
+    box-shadow: var(--pp-shadow-drop);
+    color: var(--pp-ink);
+    font-family: var(--pp-font-body);
+    text-align: left;
+    cursor: copy;
+}
+
+.lobby__code-value {
+    font-family: var(--pp-font-display);
+    font-size: 40px;
+    line-height: 1;
+    letter-spacing: 0.18em;
+}
+
+.lobby__code-hint {
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.lobby__seats {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lobby-seat {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 14px;
+    border: 3px solid var(--pp-ink);
+    border-radius: 14px;
+    background: var(--pp-cream);
+    box-shadow: 0 4px 0 rgb(43 35 64 / 0.9);
+}
+
+.lobby-seat.is-empty {
+    border-style: dashed;
+    background: rgb(255 250 240 / 0.55);
+    box-shadow: none;
+    color: rgb(43 35 64 / 0.55);
+}
+
+.lobby-seat.is-offline {
+    opacity: 0.6;
+}
+
+.lobby-seat__swatch {
+    width: 26px;
+    height: 26px;
+    border: 3px solid var(--pp-ink);
+    border-radius: 50%;
+    background: transparent;
+}
+
+.lobby-seat__name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-family: var(--pp-font-display);
+    font-size: 20px;
+}
+
+.lobby-seat__name > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.is-empty .lobby-seat__name {
+    font-family: var(--pp-font-body);
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.lobby-seat__you {
+    font-family: var(--pp-font-body);
+    font-size: 12px;
+    font-weight: 900;
+    color: rgb(43 35 64 / 0.55);
+}
+
+.lobby-seat__status {
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgb(43 35 64 / 0.55);
+}
+
+.lobby-seat.is-ready .lobby-seat__status {
+    color: #1f9e68;
+}
+
+.lobby__picker .picker__info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+}
+
+.lobby__actions {
+    display: grid;
+    gap: 10px;
+}
+
+.lobby__actions .pp-button {
+    justify-content: center;
+}
+
+.lobby__actions .pp-button--primary.is-ready {
+    background: var(--pp-cream);
+    color: var(--pp-ink);
+    text-shadow: none;
+}
+
+.pp-button.pp-button--start {
+    background: var(--pp-mint);
+    color: #fff;
+    font-size: 28px;
+    min-height: 64px;
+    text-shadow: 0 3px 0 rgb(43 35 64 / 0.35);
+}
+
+.pp-button.pp-button--start[hidden] {
+    display: none;
+}
+
+.lobby__start-hint {
+    font-weight: 900;
+    color: #fff;
+    text-align: center;
+    text-shadow: 0 2px 0 rgb(43 35 64 / 0.6);
+}
+
+.intro-card__status {
+    font-family: var(--pp-font-display);
+    font-size: 26px;
+}
+
+.card__footer--center {
+    justify-content: center;
+}
+
+.lobby {
+    gap: 10px;
+    max-width: 480px;
+}

@@ -7,6 +7,7 @@ export interface MainMenuCallbacks {
     selectedIndex: number;
     onSelect(index: number): void;
     onSoloArcade(): void;
+    onPrivateParty(): void;
     onFreePlay(): void;
 }
 
@@ -30,7 +31,7 @@ export class MainMenu {
         const entries: MenuEntry[] = [
             { label: 'Solo Arcade', hint: 'Play minigames and beat your best', action: options.onSoloArcade },
             { label: 'Free Play', hint: 'Warm up on the practice island', action: options.onFreePlay },
-            { label: 'Private Party', hint: 'Coming in a later phase' },
+            { label: 'Private Party', hint: 'Play with up to three friends', action: options.onPrivateParty },
             { label: 'Daily Challenge', hint: 'Coming in a later phase' },
             { label: 'Leaderboard', hint: 'Coming in a later phase' },
         ];

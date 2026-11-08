@@ -4,13 +4,13 @@ import type { GameScene } from '../core/GameScene';
 import { CharacterModel } from '../characters/CharacterModel';
 import { ROSTER, type CharacterDefinition } from '../characters/roster';
 import { createCloudLayer, createLighting, createSky, type CloudLayer } from '../design/environment';
-import { partyColors } from '../design/palette';
 import { Effects } from '../effects/Effects';
 import { MainMenu } from '../ui/MainMenu';
 import { SoloArcadeMenu } from '../ui/SoloArcadeMenu';
+import { PartyMenu } from '../ui/PartyMenu';
 import { MINIGAMES, UPCOMING_MINIGAMES } from '../minigames/registry';
 import type { MinigameDefinition } from '../minigames/types';
-import { createBalloon, createFlower, createIsland, type Balloon } from '../world/props';
+import { PartyStage } from '../world/PartyStage';
 import { damp, randomRange } from '../utils/math';
 
 export interface MainMenuOptions {
@@ -18,9 +18,14 @@ export interface MainMenuOptions {
     onSelectCharacter(character: CharacterDefinition): void;
     onFreePlay(): void;
     onPlayMinigame(minigame: MinigameDefinition): void;
-    /** Which panel to open on: the title menu or the Solo Arcade picker. */
-    view?: 'main' | 'arcade';
+    defaultName: string;
+    onCreateParty(name: string): Promise<void>;
+    onJoinParty(name: string, code: string): Promise<void>;
+    /** Which panel to open on. */
+    view?: MenuView;
 }
+
+export type MenuView = 'main' | 'arcade' | 'party';
 
 interface Performer {
     model: CharacterModel;
@@ -39,12 +44,13 @@ export class MainMenuScene implements GameScene {
 
     private readonly stage = new THREE.Group();
     private readonly performers: Performer[] = [];
-    private readonly balloons: Balloon[] = [];
+    private readonly partyStage = new PartyStage();
     private readonly effects: Effects;
     private readonly clouds: CloudLayer;
     private readonly menu: MainMenu;
     private readonly arcade: SoloArcadeMenu;
-    private view: 'main' | 'arcade';
+    private readonly party: PartyMenu;
+    private view: MenuView;
     private selectedIndex: number;
     private time = 0;
     private confettiTimer = 1.2;
@@ -67,6 +73,7 @@ export class MainMenuScene implements GameScene {
             selectedIndex: this.selectedIndex,
             onSelect: (index) => this.select(index),
             onSoloArcade: () => this.showView('arcade'),
+            onPrivateParty: () => this.showView('party'),
             onFreePlay: () => options.onFreePlay(),
         });
 
@@ -74,6 +81,13 @@ export class MainMenuScene implements GameScene {
             minigames: MINIGAMES,
             upcoming: UPCOMING_MINIGAMES,
             onPlay: (minigame) => options.onPlayMinigame(minigame),
+            onBack: () => this.showView('main'),
+        });
+
+        this.party = new PartyMenu(game.uiRoot, {
+            defaultName: options.defaultName,
+            onCreate: options.onCreateParty,
+            onJoin: options.onJoinParty,
             onBack: () => this.showView('main'),
         });
 
@@ -88,18 +102,17 @@ export class MainMenuScene implements GameScene {
     exit(): void {
         this.menu.unmount();
         this.arcade.unmount();
+        this.party.unmount();
     }
 
-    private showView(view: 'main' | 'arcade'): void {
+    private showView(view: MenuView): void {
         this.view = view;
         this.menu.unmount();
         this.arcade.unmount();
+        this.party.unmount();
 
-        if (view === 'main') {
-            this.menu.mount();
-        } else {
-            this.arcade.mount();
-        }
+        const panels = { main: this.menu, arcade: this.arcade, party: this.party };
+        panels[view].mount();
     }
 
     resize(width: number, height: number): void {
@@ -133,9 +146,7 @@ export class MainMenuScene implements GameScene {
             this.updatePerformer(performer, index === this.selectedIndex, dt);
         });
 
-        for (const balloon of this.balloons) {
-            balloon.update(dt, this.time);
-        }
+        this.partyStage.update(dt, this.time);
 
         this.confettiTimer -= dt;
         if (this.confettiTimer <= 0) {
@@ -221,16 +232,7 @@ export class MainMenuScene implements GameScene {
     private buildStage(): void {
         this.scene.add(this.stage);
 
-        const island = createIsland(6.2, 1);
-        this.stage.add(island);
-
-        for (let index = 0; index < 26; index++) {
-            const flower = createFlower();
-            const angle = Math.random() * Math.PI * 2;
-            const radius = randomRange(4.2, 5.8);
-            flower.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-            this.stage.add(flower);
-        }
+        this.stage.add(this.partyStage.group);
 
         const spacing = 1.9;
         ROSTER.forEach((definition, index) => {
@@ -239,19 +241,6 @@ export class MainMenuScene implements GameScene {
             model.root.position.set(homeX, 0, 0);
             this.stage.add(model.root);
             this.performers.push({ model, homeX, y: 0, vy: 0, hopTimer: randomRange(0.3, 2) });
-        });
-
-        const balloonSpots = [
-            [-5.5, 4.2, -2.5],
-            [-4.2, 5.4, -3.6],
-            [5.2, 4.6, -2.8],
-            [4, 6, -4],
-            [0.5, 6.8, -5],
-        ];
-        balloonSpots.forEach(([x, y, z], index) => {
-            const balloon = createBalloon(partyColors[index % partyColors.length], new THREE.Vector3(x, y, z));
-            this.balloons.push(balloon);
-            this.stage.add(balloon.group);
         });
     }
 }

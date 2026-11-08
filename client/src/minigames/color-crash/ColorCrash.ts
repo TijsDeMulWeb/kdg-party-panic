@@ -6,6 +6,10 @@ import { CharacterModel } from '../../characters/CharacterModel';
 import { createCloudLayer, createLighting, createSky, type CloudLayer } from '../../design/environment';
 import { Effects } from '../../effects/Effects';
 import { StaticWorld } from '../../world/StaticWorld';
+import { WorldWithMovingObstacles } from '../../world/WorldWithMovingObstacles';
+import { createNameTag } from '../../characters/NameTag';
+import { RemoteCharacters } from '../../multiplayer/RemoteCharacters';
+import { SnapshotSender } from '../../multiplayer/SnapshotSender';
 import type { Minigame, MinigameContext, MinigameResult } from '../types';
 import { ColorArena } from './ColorArena';
 import { CRASH_COLORS } from './colors';
@@ -23,6 +27,13 @@ const NEUTRAL_INPUT: InputSnapshot = {
     lookX: 0,
     lookY: 0,
 };
+
+/** Centre tile in solo; one tile per seat around the centre in multiplayer. */
+function spawnTile(seat: number | undefined): number {
+    const seatTiles = [16, 18, 30, 32];
+
+    return seat === undefined ? 24 : seatTiles[seat % seatTiles.length];
+}
 
 type RoundStep = 'waiting' | 'choosing' | 'warned' | 'dropped' | 'resolved';
 
@@ -44,6 +55,8 @@ export class ColorCrash implements Minigame {
     private readonly plans: RoundPlan[];
     private readonly cameraTarget = new THREE.Vector3();
 
+    private readonly remotes: RemoteCharacters | null = null;
+    private readonly snapshots: SnapshotSender | null = null;
     private time = 0;
     private visualTime = 0;
     private roundIndex = 0;
@@ -67,11 +80,19 @@ export class ColorCrash implements Minigame {
         this.arena.applyLayout(this.plans[0].tiles);
         this.scene.add(this.arena.group);
 
+        const spawn = this.arena.tilePosition(spawnTile(context.network?.localSeat));
         const model = new CharacterModel(context.character);
         this.scene.add(model.root);
-        const centre = Math.floor(this.plans[0].tiles.length / 2);
-        this.player = new CharacterController(model, this.world, this.arena.tilePosition(centre));
-        this.player.teleport(this.arena.tilePosition(centre), Math.PI);
+
+        if (context.network) {
+            this.remotes = new RemoteCharacters(this.scene, context.network, (position) => this.effects.poof(position));
+            this.snapshots = new SnapshotSender(context.network);
+            model.root.add(createNameTag('You', context.character.body, true, 1.7));
+        }
+
+        const world = this.remotes ? new WorldWithMovingObstacles(this.world, () => this.remotes?.obstacles() ?? []) : this.world;
+        this.player = new CharacterController(model, world, spawn);
+        this.player.teleport(spawn, Math.PI);
 
         context.overlay.append(this.banner.root);
         this.updateCamera(0, true);
@@ -81,17 +102,21 @@ export class ColorCrash implements Minigame {
         this.time = 0;
     }
 
-    update(dt: number, input: InputSnapshot, playing: boolean): void {
+    update(dt: number, input: InputSnapshot, elapsed: number | null): void {
+        const playing = elapsed !== null;
         this.visualTime += dt;
 
         if (playing) {
-            this.time += dt;
+            this.time = elapsed;
             this.advanceRounds();
         }
 
         if (!this.eliminated) {
             this.updatePlayer(dt, playing ? input : NEUTRAL_INPUT);
         }
+
+        this.remotes?.update(dt);
+        this.snapshots?.update(dt, this.player, this.eliminated);
 
         this.arena.update(dt, this.visualTime);
         this.updateCamera(dt, false);
@@ -128,6 +153,7 @@ export class ColorCrash implements Minigame {
 
     dispose(): void {
         this.banner.root.remove();
+        this.remotes?.dispose();
     }
 
     /** Fires each round's announce → warn → drop → resolve steps on schedule. */

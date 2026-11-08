@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import { ParticleSystem } from './ParticleSystem';
-import { palette, partyColors } from '../design/palette';
+import { palette } from '../design/palette';
+import { seasonTheme } from '../design/season';
 
 /** Ready-made particle presets shared by every scene. */
 export class Effects {
@@ -70,7 +71,7 @@ export class Effects {
         this.confettiSystem.emit({
             position,
             count,
-            colors: partyColors,
+            colors: seasonTheme().confetti,
             speed: [4, 9],
             lift: 5,
             spread: 0.9,

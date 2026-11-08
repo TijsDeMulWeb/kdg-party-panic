@@ -23,6 +23,11 @@ class MinigameSeeder extends Seeder
             ['slug' => 'sky-tower', 'name' => 'Sky Tower', 'duration_seconds' => 35, 'max_score' => 1650],
             ['slug' => 'fruit-frenzy', 'name' => 'Fruit Frenzy', 'duration_seconds' => 30, 'max_score' => 1400],
             ['slug' => 'bumper-sumo', 'name' => 'Bumper Sumo', 'duration_seconds' => 30, 'max_score' => 1100],
+            ['slug' => 'snowball-splat', 'name' => 'Snowball Splat', 'duration_seconds' => 30, 'max_score' => 3000],
+            ['slug' => 'quick-draw', 'name' => 'Quick Draw', 'duration_seconds' => 30, 'max_score' => 1500],
+            ['slug' => 'ice-slide', 'name' => 'Ice Slide', 'duration_seconds' => 35, 'max_score' => 1500],
+            ['slug' => 'kart-race', 'name' => 'Mini Kart Race', 'duration_seconds' => 45, 'max_score' => 2400],
+            ['slug' => 'hot-potato', 'name' => 'Hot Potato', 'duration_seconds' => 30, 'max_score' => 750],
         ])->each(fn (array $minigame) => Minigame::updateOrCreate(['slug' => $minigame['slug']], $minigame));
     }
 }

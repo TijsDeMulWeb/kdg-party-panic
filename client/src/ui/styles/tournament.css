@@ -519,3 +519,27 @@
         display: none;
     }
 }
+
+/* ---------- Seasonal logo ---------- */
+
+[data-season='christmas'] .logo__letter {
+    position: relative;
+}
+
+[data-season='christmas'] .logo__letter::before {
+    content: '';
+    position: absolute;
+    top: -0.06em;
+    left: 8%;
+    width: 84%;
+    height: 0.2em;
+    border: 0.035em solid var(--pp-ink);
+    border-radius: 50% 50% 40% 40%;
+    background: #fff;
+    z-index: 1;
+}
+
+[data-season='halloween'] body,
+html[data-season='halloween'] {
+    background: linear-gradient(#3b2a6b, #f29b5c);
+}

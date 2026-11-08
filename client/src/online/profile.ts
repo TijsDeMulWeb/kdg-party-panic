@@ -1,5 +1,5 @@
 import { findCharacter, type CharacterDefinition } from '../characters/roster';
-import { HATS } from '../characters/hats';
+import { availableHats } from '../characters/hats';
 import { readStorage, writeStorage } from '../utils/storage';
 
 const CHARACTER_KEY = 'party-panic.character';
@@ -19,7 +19,7 @@ export function loadProfile(): LocalProfile {
     return {
         name: readStorage(NAME_KEY, ''),
         character: findCharacter(readStorage(CHARACTER_KEY, 'pip')),
-        hat: HATS.some((candidate) => candidate.id === hat) ? hat : null,
+        hat: availableHats().some((candidate) => candidate.id === hat) ? hat : null,
     };
 }
 

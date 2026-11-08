@@ -7,10 +7,30 @@ import { packagePanic } from './package-panic';
 import { paintParty } from './paint-party';
 import { skyTower } from './sky-tower';
 import { vacuumChaos } from './vacuum-chaos';
+import { hotPotato } from './hot-potato';
+import { iceSlide } from './ice-slide';
+import { kartRace } from './kart-race';
+import { quickDraw } from './quick-draw';
+import { snowballSplat } from './snowball-splat';
 import type { MinigameDefinition } from './types';
 
 /** Every playable minigame. Adding one here makes it appear in Solo Arcade and party matches. */
-export const MINIGAMES: readonly MinigameDefinition[] = [colorCrash, packagePanic, bigBall, vacuumChaos, paintParty, meteorMayhem, skyTower, fruitFrenzy, bumperSumo];
+export const MINIGAMES: readonly MinigameDefinition[] = [
+    colorCrash,
+    packagePanic,
+    bigBall,
+    vacuumChaos,
+    paintParty,
+    meteorMayhem,
+    skyTower,
+    fruitFrenzy,
+    bumperSumo,
+    snowballSplat,
+    quickDraw,
+    iceSlide,
+    kartRace,
+    hotPotato,
+];
 
 /** Announced but not yet playable; shown as locked cards. */
 export const UPCOMING_MINIGAMES: readonly { name: string; tagline: string }[] = [];

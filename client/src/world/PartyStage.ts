@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { partyColors } from '../design/palette';
 import { randomRange } from '../utils/math';
 import { createBalloon, createFlower, createIsland, type Balloon } from './props';
+import { createSeasonalDecor, type Decor } from './seasonalDecor';
 
 /** Floating island with flowers and balloons, used by the title screen and the lobby. */
 export class PartyStage {
     readonly group = new THREE.Group();
     private readonly balloons: Balloon[] = [];
+    private readonly decor: Decor | null;
 
     constructor(radius = 6.2) {
         this.group.add(createIsland(radius, 1));
@@ -27,6 +29,11 @@ export class PartyStage {
             [0.5, 6.8, -5],
         ];
 
+        this.decor = createSeasonalDecor(radius);
+        if (this.decor) {
+            this.group.add(this.decor.group);
+        }
+
         spots.forEach(([x, y, z], index) => {
             const balloon = createBalloon(partyColors[index % partyColors.length], new THREE.Vector3(x, y, z));
             this.balloons.push(balloon);
@@ -38,5 +45,7 @@ export class PartyStage {
         for (const balloon of this.balloons) {
             balloon.update(dt, time);
         }
+
+        this.decor?.update(dt, time);
     }
 }

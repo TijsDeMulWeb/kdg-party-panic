@@ -1,4 +1,4 @@
-import { HATS } from '../characters/hats';
+import { availableHats } from '../characters/hats';
 import { ROSTER } from '../characters/roster';
 import type { LocalProfile } from '../online/profile';
 import { el } from './dom';
@@ -64,7 +64,7 @@ export class WardrobeMenu {
         this.characterTagline.textContent = character.tagline;
         this.swatch.style.background = `#${character.body.toString(16).padStart(6, '0')}`;
 
-        const choices = [{ id: null, name: 'No hat' }, ...HATS];
+        const choices = [{ id: null, name: 'No hat' }, ...availableHats()];
         this.hats.replaceChildren(
             ...choices.map((choice) =>
                 el('button', {

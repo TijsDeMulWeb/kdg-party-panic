@@ -2,7 +2,7 @@
 
 # Party Panic
 
-Browser-based multiplayer arcade party game. 1 to 4 players, nine short minigames, five per match, cartoon 3D style.
+Browser-based multiplayer arcade party game. 1 to 4 players, fourteen short minigames, five per match, cartoon 3D style with seasonal themes.
 
 ## Layout
 
@@ -42,7 +42,8 @@ Scheduled tasks: `php artisan schedule:work` locally (or `schedule:run` from cro
 Dev shortcuts (only in `npm run dev`):
 
 - `?scene=freeplay` opens the practice island.
-- `?scene=<minigame>` opens a minigame directly (`color-crash`, `package-panic`, `big-ball`, `vacuum-chaos`, `paint-party`, `meteor-mayhem`, `sky-tower`, `fruit-frenzy`, `bumper-sumo`). Add `&seed=42` for a fixed layout.
+- `?scene=<minigame>` opens a minigame directly (`color-crash`, `package-panic`, `big-ball`, `vacuum-chaos`, `paint-party`, `meteor-mayhem`, `sky-tower`, `fruit-frenzy`, `bumper-sumo`, `snowball-splat`, `quick-draw`, `ice-slide`, `kart-race`, `hot-potato`). Add `&seed=42` for a fixed layout.
+- `?season=christmas` (or `halloween`, `easter`, `default`) previews a seasonal theme.
 
 ## Controls
 

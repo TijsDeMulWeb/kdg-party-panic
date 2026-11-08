@@ -15,6 +15,9 @@ class HatSeeder extends Seeder
             'cap' => 'Cap',
             'bow' => 'Bow',
             'flower' => 'Flower',
+            'santa-hat' => 'Santa hat',
+            'witch-hat' => 'Witch hat',
+            'bunny-ears' => 'Bunny ears',
         ])->each(fn (string $name, string $slug) => Hat::updateOrCreate(['slug' => $slug], ['name' => $name]));
     }
 }

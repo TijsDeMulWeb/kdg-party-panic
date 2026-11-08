@@ -76,6 +76,11 @@ export class RemoteCharacters {
         }
     }
 
+    /** Adds something to a remote player's character, e.g. the kart they sit in. */
+    attach(playerId: number, object: THREE.Object3D): void {
+        this.remotes.get(playerId)?.model.root.add(object);
+    }
+
     /** Where another player currently appears, or null if hidden/offline. */
     positionOf(playerId: number): THREE.Vector3 | null {
         const remote = this.remotes.get(playerId);

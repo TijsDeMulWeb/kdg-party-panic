@@ -24,10 +24,17 @@ export class ClaimBook {
         private readonly localTime: () => number,
         /** Something was taken by someone else; `wasMine` means we lose it. */
         private readonly onLost: (id: number, wasMine: boolean) => void,
+        /** False when the game unpacks snapshots itself and calls receiveFrom(). */
+        listen = true,
     ) {
-        if (network) {
+        if (network && listen) {
             this.unsubscribe = network.onSnapshot((playerId, snapshot) => this.receive(playerId, snapshot.e));
         }
+    }
+
+    /** Feeds claims that arrived inside a game's own packed snapshot data. */
+    receiveFrom(playerId: number, payload: number[] | undefined): void {
+        this.receive(playerId, payload);
     }
 
     get myId(): number {

@@ -1,5 +1,5 @@
 import { findCharacter, ROSTER } from '../characters/roster';
-import { HATS } from '../characters/hats';
+import { availableHats, hatName } from '../characters/hats';
 import type { RoomPlayer, RoomState } from '../multiplayer/types';
 import { el } from './dom';
 
@@ -89,7 +89,7 @@ export class LobbyPanel {
 
         if (me) {
             this.characterName.textContent = findCharacter(me.character).name;
-            this.hatName.textContent = HATS.find((hat) => hat.id === me.hat)?.name ?? 'No hat';
+            this.hatName.textContent = hatName(me.hat);
             this.readyButton.textContent = me.is_ready ? 'Not ready' : "I'm ready!";
             this.readyButton.classList.toggle('is-ready', me.is_ready);
         }
@@ -182,7 +182,7 @@ export class LobbyPanel {
             return;
         }
 
-        const options = [null, ...HATS.map((hat) => hat.id)];
+        const options = [null, ...availableHats().map((hat) => hat.id)];
         const index = options.indexOf(me.hat);
         await this.run(() => this.options.onHat(options[(index + direction + options.length) % options.length]));
     }

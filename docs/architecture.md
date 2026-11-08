@@ -100,6 +100,19 @@ Guests are `users` without email. Creating an account upgrades the same row, so 
 | Sky Tower | `sky-tower/rules.ts` | position, score, star claims |
 | Fruit Frenzy | `fruit-frenzy/rules.ts` | position, score, fruit claims |
 | Bumper Sumo | `bumper-sumo/rules.ts` | position, score, dash hits (`e = [target, dx, dz, time, ...]`) |
+| Snowball Splat | `snowball-splat/rules.ts` | position, score, packed sections: throws, hits taken, snowman claims |
+| Quick Draw | `quick-draw/rules.ts` | score, reaction for the current duel (`e = [duel, ms]`) |
+| Ice Slide | `ice-slide/rules.ts` | position, score |
+| Mini Kart Race | `kart-race/track.ts`, `kart-race/kart.ts` | kart position and heading, score |
+| Hot Potato | `hot-potato/rules.ts` | position, out flag, numbered bomb passes (`e = [round, seq, to, ...]`) |
+
+Games that send several kinds of data pack them with `multiplayer/extraSections.ts`.
+
+**Snowball Splat** uses the same idea as Bumper Sumo: every client simulates all snowballs, but only the player who gets hit decides that they were hit, and reports it so the thrower gets the points.
+
+**Hot Potato** has one piece of shared state: who holds the bomb. Only the holder can pass it, so the holder's client decides and sends a numbered pass event; others apply the highest number they have seen. In solo play three simple computer players join (they chase when holding the bomb, flee otherwise).
+
+**Mini Kart Race** doesn't use the character controller: `kart.ts` is a small arcade driving model, `track.ts` a closed spline with progress tracking and checkpoints so laps can't be cut short.
 
 Arena minigames build on `minigames/shared/MinigameStage.ts` (sky, light, local and remote players, snapshots, follow camera). Anything players can grab first goes through `multiplayer/ClaimBook.ts`.
 
@@ -114,3 +127,9 @@ In Vacuum Chaos two players can grab the same toy. Claims travel in the snapshot
 All sound is synthesised at runtime (`audio/sounds.ts`, `audio/music.ts`), so there are no audio files to load. The mute toggle is remembered.
 
 Hats are cosmetic and stored per player (`hats` lookup table, `users.hat_id`). They are chosen in the wardrobe (hanger button, top right) or in the lobby and sent to everyone in the room.
+
+## Seasons
+
+`design/season.ts` picks a theme from the date: Christmas (1 December to 6 January), Halloween (15 October to 2 November) and Easter (two weeks before to one week after Easter Sunday, computed per year). `?season=christmas|halloween|easter|default` previews one.
+
+A theme recolours the shared palette before anything is built (sky, fog, grass: snow at Christmas, dusk at Halloween, pastel at Easter), adds props to every party stage (`world/seasonalDecor.ts`: trees and presents, jack-o'-lanterns and bats, eggs and bunnies), drifts particles through every scene (`effects/SeasonalAmbience.ts`), changes logo colours, confetti, the tagline and the menu music, and unlocks one seasonal hat (Santa hat, witch hat, bunny ears) for the duration. Hats picked during a season keep rendering afterwards.

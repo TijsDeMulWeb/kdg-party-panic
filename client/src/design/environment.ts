@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { palette } from './palette';
+import { seasonTheme } from './season';
 import { toonMaterial } from './materials';
 import { randomRange } from '../utils/math';
 
@@ -47,10 +48,11 @@ export interface Lighting {
 
 /** Bright, soft studio lighting used by every scene. */
 export function createLighting(scene: THREE.Scene, shadowSize = 18): Lighting {
-    const hemisphere = new THREE.HemisphereLight(0xdff4ff, 0xa58a6a, 1.6);
+    const spooky = seasonTheme().season === 'halloween';
+    const hemisphere = new THREE.HemisphereLight(spooky ? 0xd9c2ff : 0xdff4ff, spooky ? 0x6a4a3a : 0xa58a6a, spooky ? 1.35 : 1.6);
     scene.add(hemisphere);
 
-    const sun = new THREE.DirectionalLight(0xfff3d6, 2.4);
+    const sun = new THREE.DirectionalLight(spooky ? 0xffb874 : 0xfff3d6, spooky ? 2.1 : 2.4);
     const sunOffset = new THREE.Vector3(8, 16, 6);
     sun.position.copy(sunOffset);
     sun.castShadow = true;

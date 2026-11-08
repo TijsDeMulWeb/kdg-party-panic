@@ -1,5 +1,6 @@
 import { el } from './dom';
 import { createLogo } from './Logo';
+import { seasonTheme } from '../design/season';
 
 export interface MainMenuCallbacks {
     onSoloArcade(): void;
@@ -27,7 +28,7 @@ export class MainMenu {
         );
 
         this.root = el('div', { className: 'menu' }, [
-            el('header', { className: 'menu__brand' }, [createLogo(), el('p', { className: 'menu__tagline', text: 'Five minigames. Four friends. Zero chill.' })]),
+            el('header', { className: 'menu__brand' }, [createLogo(), el('p', { className: 'menu__tagline', text: seasonTheme().tagline })]),
             el('nav', { className: 'menu__actions' }, buttons),
             el('footer', { className: 'menu__footer', text: 'Enter for Solo Arcade' }),
         ]);

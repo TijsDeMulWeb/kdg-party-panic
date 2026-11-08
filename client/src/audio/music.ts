@@ -1,7 +1,11 @@
+import { seasonTheme, type Season } from '../design/season';
+
 export type MusicMood = 'menu' | 'game';
 
 interface Pattern {
     tempo: number;
+    /** Sleigh-bell style shimmer on every eighth (Christmas). */
+    bells?: boolean;
     /** Bass notes per eighth (MIDI numbers, 0 = rest). */
     bass: number[];
     /** Chord roots per bar. */
@@ -34,6 +38,45 @@ const PATTERNS: Record<MusicMood, Pattern> = {
     },
 };
 
+/** Seasonal replacements for the menu tune; in-game music only gets the extra layer. */
+const SEASONAL_MENU: Partial<Record<Season, Pattern>> = {
+    christmas: {
+        tempo: 116,
+        bells: true,
+        bass: [43, 0, 50, 0, 47, 0, 50, 0, 40, 0, 47, 0, 43, 0, 47, 0, 36, 0, 43, 0, 40, 0, 43, 0, 38, 0, 45, 0, 42, 0, 45, 0],
+        chords: [
+            [55, 59, 62],
+            [52, 55, 59],
+            [48, 52, 55],
+            [50, 54, 57],
+        ],
+        lead: [74, 0, 74, 76, 74, 0, 71, 0, 72, 0, 72, 74, 72, 0, 67, 0, 69, 0, 71, 72, 74, 0, 79, 0, 78, 0, 76, 0, 74, 0, 0, 0],
+    },
+    halloween: {
+        tempo: 96,
+        bass: [45, 0, 45, 52, 0, 45, 51, 0, 41, 0, 41, 48, 0, 41, 47, 0, 40, 0, 40, 47, 0, 40, 46, 0, 45, 0, 44, 0, 45, 0, 40, 0],
+        chords: [
+            [57, 60, 64],
+            [53, 57, 60],
+            [52, 56, 59],
+            [57, 60, 63],
+        ],
+        lead: [69, 0, 72, 0, 71, 70, 69, 0, 0, 65, 0, 68, 0, 69, 0, 0, 64, 0, 68, 71, 0, 70, 0, 69, 0, 0, 68, 0, 69, 0, 0, 0],
+    },
+    easter: {
+        tempo: 120,
+        bells: true,
+        bass: [41, 0, 48, 0, 45, 0, 48, 0, 46, 0, 53, 0, 50, 0, 53, 0, 43, 0, 50, 0, 46, 0, 50, 0, 48, 0, 55, 0, 52, 0, 55, 0],
+        chords: [
+            [53, 57, 60],
+            [58, 62, 65],
+            [55, 58, 62],
+            [60, 64, 67],
+        ],
+        lead: [77, 0, 81, 0, 84, 0, 81, 79, 0, 77, 79, 0, 81, 0, 0, 0, 79, 0, 77, 76, 0, 74, 0, 76, 77, 0, 72, 0, 77, 0, 0, 0],
+    },
+};
+
 const frequency = (note: number): number => 440 * Math.pow(2, (note - 69) / 12);
 
 /**
@@ -54,9 +97,11 @@ export class Music {
     }
 
     play(mood: MusicMood | null): void {
-        const next = mood ? PATTERNS[mood] : null;
+        const seasonal = mood === 'menu' ? SEASONAL_MENU[seasonTheme().season] : undefined;
+        const base = mood ? PATTERNS[mood] : null;
+        const next = seasonal ?? (base && seasonTheme().season === 'christmas' ? { ...base, bells: true } : base);
 
-        if (next === this.pattern) {
+        if (next === this.pattern || (next && this.pattern && next.lead === this.pattern.lead && next.tempo === this.pattern.tempo)) {
             return;
         }
 
@@ -99,6 +144,10 @@ export class Music {
             }
 
             this.hat(time, step % 2 === 0 ? 0.25 : 0.12);
+
+            if (pattern.bells) {
+                this.note(frequency(96 + (step % 3) * 2), time, eighth * 0.4, 'triangle', 0.08);
+            }
 
             this.nextTime += eighth;
             this.step++;

@@ -8,8 +8,7 @@ Browser-based multiplayer arcade party game. 1 to 4 players, five short minigame
 
 ```
 client/    Game client (TypeScript, Three.js, Vite)
-server/    Colyseus realtime server (phase 3)
-backend/   Laravel API (phase 6)
+backend/   Laravel API + Pusher broadcasting (phase 3)
 docs/      Architecture notes
 ```
 

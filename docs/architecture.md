@@ -26,7 +26,7 @@ utils/             Math and storage helpers.
 
 **Input is intent, not devices.** Scenes read `InputSnapshot` (move vector, jump, action, look delta). Adding a device or rebinding keys never touches gameplay code. Key bindings use `event.code`, so AZERTY and QWERTY both work on the same physical keys.
 
-**Movement is pure.** `characters/movement.ts` has no Three.js or DOM imports. It takes state, input, config and a `MovementWorld` and returns events. That lets the Colyseus server run the exact same simulation later for authoritative movement and lets the client predict locally.
+**Movement is pure.** `characters/movement.ts` has no Three.js or DOM imports. It takes state, input, config and a `MovementWorld` and returns events. Each client simulates its own character and shares its position over Pusher client events; the same code drives local play and can later be used to replay inputs for score validation.
 
 **Model and simulation are separate.** `CharacterModel` only animates from motion values (speed, grounded, vertical velocity). The same model works for the local player, remote players driven by server snapshots and menu idles.
 

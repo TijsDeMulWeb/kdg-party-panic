@@ -1,7 +1,7 @@
 /**
  * Pure character movement simulation. Deliberately free of Three.js and
- * the DOM so the same code can later run on the Colyseus server for
- * authoritative movement and client-side prediction.
+ * the DOM, so it can be unit tested and reused outside the browser
+ * (for example to replay inputs when validating scores).
  */
 
 export interface Vec3 {

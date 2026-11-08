@@ -52,6 +52,13 @@ export class CameraRig {
         return this.yaw;
     }
 
+    /** Changes orbit distance and height (e.g. per screen orientation). */
+    setFraming(distance: number, height: number): void {
+        this.options.distance = distance;
+        this.options.height = height;
+        this.pitch = Math.atan2(height, distance);
+    }
+
     rotate(deltaX: number, deltaY: number): void {
         const { rotateSpeed, minPitch, maxPitch } = this.options;
         this.yaw -= deltaX * rotateSpeed;

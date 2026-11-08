@@ -7,6 +7,9 @@ import { createCloudLayer, createLighting, createSky, type CloudLayer } from '..
 import { partyColors } from '../design/palette';
 import { Effects } from '../effects/Effects';
 import { MainMenu } from '../ui/MainMenu';
+import { SoloArcadeMenu } from '../ui/SoloArcadeMenu';
+import { MINIGAMES, UPCOMING_MINIGAMES } from '../minigames/registry';
+import type { MinigameDefinition } from '../minigames/types';
 import { createBalloon, createFlower, createIsland, type Balloon } from '../world/props';
 import { damp, randomRange } from '../utils/math';
 
@@ -14,6 +17,9 @@ export interface MainMenuOptions {
     character: CharacterDefinition;
     onSelectCharacter(character: CharacterDefinition): void;
     onFreePlay(): void;
+    onPlayMinigame(minigame: MinigameDefinition): void;
+    /** Which panel to open on: the title menu or the Solo Arcade picker. */
+    view?: 'main' | 'arcade';
 }
 
 interface Performer {
@@ -37,6 +43,8 @@ export class MainMenuScene implements GameScene {
     private readonly effects: Effects;
     private readonly clouds: CloudLayer;
     private readonly menu: MainMenu;
+    private readonly arcade: SoloArcadeMenu;
+    private view: 'main' | 'arcade';
     private selectedIndex: number;
     private time = 0;
     private confettiTimer = 1.2;
@@ -58,17 +66,40 @@ export class MainMenuScene implements GameScene {
             roster: ROSTER,
             selectedIndex: this.selectedIndex,
             onSelect: (index) => this.select(index),
+            onSoloArcade: () => this.showView('arcade'),
             onFreePlay: () => options.onFreePlay(),
         });
+
+        this.arcade = new SoloArcadeMenu(game.uiRoot, {
+            minigames: MINIGAMES,
+            upcoming: UPCOMING_MINIGAMES,
+            onPlay: (minigame) => options.onPlayMinigame(minigame),
+            onBack: () => this.showView('main'),
+        });
+
+        this.view = options.view ?? 'main';
     }
 
     enter(): void {
-        this.menu.mount();
         this.game.input.setGameplayControls(false);
+        this.showView(this.view);
     }
 
     exit(): void {
         this.menu.unmount();
+        this.arcade.unmount();
+    }
+
+    private showView(view: 'main' | 'arcade'): void {
+        this.view = view;
+        this.menu.unmount();
+        this.arcade.unmount();
+
+        if (view === 'main') {
+            this.menu.mount();
+        } else {
+            this.arcade.mount();
+        }
     }
 
     resize(width: number, height: number): void {

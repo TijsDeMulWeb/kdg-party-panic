@@ -6,6 +6,7 @@ export interface MainMenuCallbacks {
     roster: readonly CharacterDefinition[];
     selectedIndex: number;
     onSelect(index: number): void;
+    onSoloArcade(): void;
     onFreePlay(): void;
 }
 
@@ -27,8 +28,8 @@ export class MainMenu {
         this.index = options.selectedIndex;
 
         const entries: MenuEntry[] = [
+            { label: 'Solo Arcade', hint: 'Play minigames and beat your best', action: options.onSoloArcade },
             { label: 'Free Play', hint: 'Warm up on the practice island', action: options.onFreePlay },
-            { label: 'Solo Arcade', hint: 'Coming in a later phase' },
             { label: 'Private Party', hint: 'Coming in a later phase' },
             { label: 'Daily Challenge', hint: 'Coming in a later phase' },
             { label: 'Leaderboard', hint: 'Coming in a later phase' },
@@ -60,7 +61,7 @@ export class MainMenu {
             el('header', { className: 'menu__brand' }, [createLogo(), el('p', { className: 'menu__tagline', text: 'Five minigames. Four friends. Zero chill.' })]),
             el('nav', { className: 'menu__actions' }, buttons),
             el('div', { className: 'menu__picker' }, [el('span', { className: 'menu__picker-title', text: 'Your character' }), picker]),
-            el('footer', { className: 'menu__footer', text: 'Enter to play · ← → to pick a character' }),
+            el('footer', { className: 'menu__footer', text: 'Enter for Solo Arcade · ← → to pick a character' }),
         ]);
 
         this.render();
@@ -103,8 +104,8 @@ export class MainMenu {
             this.cycle(1);
         }
 
-        if (event.code === 'Enter') {
-            this.options.onFreePlay();
+        if (event.code === 'Enter' && !(event.target instanceof HTMLButtonElement)) {
+            this.options.onSoloArcade();
         }
     };
 }

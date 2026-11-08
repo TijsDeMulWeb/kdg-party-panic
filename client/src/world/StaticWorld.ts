@@ -1,6 +1,11 @@
 import type { MovementWorld, Vec3 } from '../characters/movement';
 
-interface BoxCollider {
+/** Returned by add* so dynamic level pieces (falling tiles) can toggle collision. */
+export interface ColliderHandle {
+    enabled: boolean;
+}
+
+interface BoxCollider extends ColliderHandle {
     kind: 'box';
     minX: number;
     maxX: number;
@@ -11,7 +16,7 @@ interface BoxCollider {
     walkable: boolean;
 }
 
-interface CylinderCollider {
+interface CylinderCollider extends ColliderHandle {
     kind: 'cylinder';
     x: number;
     z: number;
@@ -36,8 +41,8 @@ export interface ColliderOptions {
 export class StaticWorld implements MovementWorld {
     private readonly colliders: Collider[] = [];
 
-    addBox(center: Vec3, size: Vec3, options: ColliderOptions = {}): void {
-        this.colliders.push({
+    addBox(center: Vec3, size: Vec3, options: ColliderOptions = {}): ColliderHandle {
+        const collider: BoxCollider = {
             kind: 'box',
             minX: center.x - size.x / 2,
             maxX: center.x + size.x / 2,
@@ -46,19 +51,26 @@ export class StaticWorld implements MovementWorld {
             bottom: center.y - size.y / 2,
             top: center.y + size.y / 2,
             walkable: options.walkable ?? true,
-        });
+            enabled: true,
+        };
+        this.colliders.push(collider);
+
+        return collider;
     }
 
     /** `y` is the base of the cylinder. */
-    addCylinder(x: number, y: number, z: number, radius: number, height: number, options: ColliderOptions = {}): void {
-        this.colliders.push({ kind: 'cylinder', x, z, radius, bottom: y, top: y + height, walkable: options.walkable ?? true });
+    addCylinder(x: number, y: number, z: number, radius: number, height: number, options: ColliderOptions = {}): ColliderHandle {
+        const collider: CylinderCollider = { kind: 'cylinder', x, z, radius, bottom: y, top: y + height, walkable: options.walkable ?? true, enabled: true };
+        this.colliders.push(collider);
+
+        return collider;
     }
 
-    groundHeight(x: number, z: number, maxY: number): number | null {
+    groundHeight(x: number, z: number, maxY: number, footRadius = 0): number | null {
         let best: number | null = null;
 
         for (const collider of this.colliders) {
-            if (!collider.walkable || collider.top > maxY || !this.containsPoint(collider, x, z)) {
+            if (!collider.enabled || !collider.walkable || collider.top > maxY || !this.overlapsFoot(collider, x, z, footRadius)) {
                 continue;
             }
 
@@ -72,8 +84,8 @@ export class StaticWorld implements MovementWorld {
 
     resolveWalls(position: Vec3, radius: number, height: number, stepHeight: number): void {
         for (const collider of this.colliders) {
-            // Standing on (or stepping onto) it, or entirely above/below it.
-            if (position.y >= collider.top - stepHeight || position.y + height <= collider.bottom) {
+            // Disabled, standing on (or stepping onto) it, or entirely above/below it.
+            if (!collider.enabled || position.y >= collider.top - stepHeight || position.y + height <= collider.bottom) {
                 continue;
             }
 
@@ -85,12 +97,15 @@ export class StaticWorld implements MovementWorld {
         }
     }
 
-    private containsPoint(collider: Collider, x: number, z: number): boolean {
+    private overlapsFoot(collider: Collider, x: number, z: number, footRadius: number): boolean {
         if (collider.kind === 'cylinder') {
-            return (x - collider.x) ** 2 + (z - collider.z) ** 2 <= collider.radius ** 2;
+            return Math.hypot(x - collider.x, z - collider.z) <= collider.radius + footRadius;
         }
 
-        return x >= collider.minX && x <= collider.maxX && z >= collider.minZ && z <= collider.maxZ;
+        const closestX = Math.min(Math.max(x, collider.minX), collider.maxX);
+        const closestZ = Math.min(Math.max(z, collider.minZ), collider.maxZ);
+
+        return Math.hypot(x - closestX, z - closestZ) <= footRadius;
     }
 
     private pushOutOfCylinder(collider: CylinderCollider, position: Vec3, radius: number): void {

@@ -40,6 +40,9 @@ export interface MovementConfig {
     stepHeight: number;
 }
 
+/** Fraction of the body radius that still counts as standing on a ledge. */
+const FOOT_RATIO = 0.5;
+
 export const DEFAULT_MOVEMENT: MovementConfig = {
     maxSpeed: 7,
     acceleration: 60,
@@ -82,8 +85,11 @@ export interface MovementEvents {
 
 /** Static level geometry the character moves against. */
 export interface MovementWorld {
-    /** Highest walkable surface at (x, z) that is at or below `maxY`, or null over the void. */
-    groundHeight(x: number, z: number, maxY: number): number | null;
+    /**
+     * Highest walkable surface under a foot circle of `footRadius` around (x, z)
+     * that is at or below `maxY`, or null over the void.
+     */
+    groundHeight(x: number, z: number, maxY: number, footRadius: number): number | null;
     /** Pushes a vertical cylinder out of solid walls. Mutates `position`. */
     resolveWalls(position: Vec3, radius: number, height: number, stepHeight: number): void;
 }
@@ -211,7 +217,7 @@ export function stepMovement(
 
     // Vertical move and ground detection.
     const wasGrounded = state.grounded;
-    const ground = world.groundHeight(position.x, position.z, position.y + config.stepHeight);
+    const ground = world.groundHeight(position.x, position.z, position.y + config.stepHeight, config.radius * FOOT_RATIO);
     const nextY = position.y + velocity.y * dt;
 
     if (ground !== null && velocity.y <= 0 && (nextY <= ground || (wasGrounded && position.y - ground <= config.stepHeight))) {

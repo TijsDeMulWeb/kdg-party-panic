@@ -2,6 +2,10 @@ import type { Game } from './Game';
 import { findCharacter, ROSTER, type CharacterDefinition } from '../characters/roster';
 import { MainMenuScene } from '../scenes/MainMenuScene';
 import { PlaygroundScene } from '../scenes/PlaygroundScene';
+import { MinigameScene } from '../scenes/MinigameScene';
+import { findMinigame } from '../minigames/registry';
+import type { MinigameDefinition } from '../minigames/types';
+import { randomSeed } from '../utils/random';
 import { readStorage, writeStorage } from '../utils/storage';
 
 const CHARACTER_KEY = 'party-panic.character';
@@ -18,21 +22,44 @@ export class GameManager {
     }
 
     start(): void {
-        // Dev shortcut: ?scene=freeplay skips the title screen.
-        if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('scene') === 'freeplay') {
+        // Dev shortcuts: ?scene=freeplay or ?scene=<minigame-id>[&seed=n] skip the title screen.
+        const scene = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('scene') : null;
+        const minigame = scene ? findMinigame(scene) : undefined;
+
+        if (scene === 'freeplay') {
             this.startFreePlay();
+            return;
+        }
+
+        if (minigame) {
+            const seed = Number.parseInt(new URLSearchParams(window.location.search).get('seed') ?? '', 10);
+            this.startSolo(minigame, Number.isFinite(seed) ? seed : randomSeed());
             return;
         }
 
         this.showMainMenu();
     }
 
-    showMainMenu(): void {
+    showMainMenu(view: 'main' | 'arcade' = 'main'): void {
         void this.game.scenes.switchTo(
             new MainMenuScene(this.game, {
                 character: this.character,
+                view,
                 onSelectCharacter: (character) => this.selectCharacter(character),
                 onFreePlay: () => this.startFreePlay(),
+                onPlayMinigame: (minigame) => this.startSolo(minigame),
+            }),
+        );
+    }
+
+    startSolo(minigame: MinigameDefinition, seed = randomSeed()): void {
+        void this.game.scenes.switchTo(
+            new MinigameScene(this.game, {
+                definition: minigame,
+                character: this.character,
+                seed,
+                onReplay: () => this.startSolo(minigame),
+                onExit: () => this.showMainMenu('arcade'),
             }),
         );
     }

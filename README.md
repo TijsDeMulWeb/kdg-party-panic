@@ -21,7 +21,10 @@ npm run dev        # http://localhost:5173
 npm run build      # typecheck + production build
 ```
 
-Dev shortcut: `http://localhost:5173/?scene=freeplay` skips the title screen.
+Dev shortcuts (only in `npm run dev`):
+
+- `?scene=freeplay` opens the practice island.
+- `?scene=color-crash` opens a minigame directly. Add `&seed=42` for a fixed layout.
 
 ## Controls
 

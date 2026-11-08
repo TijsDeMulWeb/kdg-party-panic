@@ -1,3 +1,8 @@
+@import "./styles/cards.css";
+@import "./styles/arcade.css";
+@import "./styles/minigame.css";
+
+
 /* Party Panic design tokens. Mirrors design/palette.ts. */
 :root {
     --pp-coral: #ff5a5f;

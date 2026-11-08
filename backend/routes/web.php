@@ -7,6 +7,7 @@ use App\Http\Controllers\DailyChallengeLeaderboardController;
 use App\Http\Controllers\DailyChallengeRunsController;
 use App\Http\Controllers\DailyChallengesController;
 use App\Http\Controllers\FinalizeRoundController;
+use App\Http\Controllers\GameController;
 use App\Http\Controllers\LeaderboardsController;
 use App\Http\Controllers\MatchHistoryController;
 use App\Http\Controllers\PlayersController;
@@ -18,9 +19,7 @@ use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\StartMatchController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::get('/', GameController::class)->name('home');
 
 Route::prefix('api')->group(function () {
     Route::get('clock', ClockController::class)->name('clock.show');

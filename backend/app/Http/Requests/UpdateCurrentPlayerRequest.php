@@ -17,6 +17,7 @@ class UpdateCurrentPlayerRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'min:1', 'max:16'],
             'character' => ['sometimes', 'string', 'exists:characters,slug'],
+            'hat' => ['sometimes', 'nullable', 'string', 'exists:hats,slug'],
         ];
     }
 }

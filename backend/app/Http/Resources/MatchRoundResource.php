@@ -13,11 +13,15 @@ class MatchRoundResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'id' => $this->id,
+            'match_id' => $this->party_match_id,
             'number' => $this->number,
+            'total_rounds' => $this->partyMatch->rounds()->count(),
             'minigame' => $this->minigame->slug,
             'seed' => $this->seed,
-            'starts_at' => $this->starts_at->getTimestampMs(),
-            'ends_at' => $this->ends_at->getTimestampMs(),
+            'starts_at' => $this->starts_at?->getTimestampMs(),
+            'ends_at' => $this->ends_at?->getTimestampMs(),
+            'is_finished' => $this->isFinished(),
         ];
     }
 }

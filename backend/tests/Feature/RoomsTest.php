@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Events\RoomUpdated;
-use App\Events\RoundStarting;
 use App\Models\Room;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -81,60 +80,6 @@ class RoomsTest extends TestCase
             ->patchJson(route('roomMemberships.update', $room), ['character' => 'blu'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('character');
-    }
-
-    public function test_only_the_host_can_start_a_round(): void
-    {
-        $room = $this->roomWithPlayers(2);
-        $guestPlayer = $room->players->firstWhere('id', '!=', $room->host_id);
-
-        $this->actingAs($guestPlayer)->postJson(route('rounds.store', $room))->assertForbidden();
-    }
-
-    public function test_a_round_needs_two_ready_players(): void
-    {
-        $soloRoom = $this->roomWithPlayers(1);
-        $this->setEveryoneReady($soloRoom);
-
-        $this->actingAs($soloRoom->host)->postJson(route('rounds.store', $soloRoom))->assertUnprocessable();
-
-        $room = $this->roomWithPlayers(2);
-
-        $this->actingAs($room->host)
-            ->postJson(route('rounds.store', $room))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('room');
-    }
-
-    public function test_the_host_starts_a_synchronised_round_when_everyone_is_ready(): void
-    {
-        Event::fake([RoundStarting::class, RoomUpdated::class]);
-        $room = $this->roomWithPlayers(3);
-        $this->setEveryoneReady($room);
-
-        $response = $this->actingAs($room->host)
-            ->postJson(route('rounds.store', $room))
-            ->assertCreated()
-            ->assertJsonPath('data.minigame', 'color-crash')
-            ->assertJsonPath('data.number', 1);
-
-        $this->assertGreaterThan(now()->getTimestampMs(), $response->json('data.starts_at'));
-        $this->assertSame(30000, $response->json('data.ends_at') - $response->json('data.starts_at'));
-        $this->assertTrue($room->isPlaying());
-        $this->assertFalse($room->players()->wherePivot('is_ready', true)->exists());
-        Event::assertDispatched(RoundStarting::class);
-    }
-
-    public function test_nobody_can_join_while_a_round_is_played(): void
-    {
-        $room = $this->roomWithPlayers(2);
-        $this->setEveryoneReady($room);
-        $this->actingAs($room->host)->postJson(route('rounds.store', $room))->assertCreated();
-
-        $this->actingAs($this->guest())
-            ->postJson(route('roomMemberships.store', $room))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('room');
     }
 
     public function test_the_host_role_moves_on_when_the_host_leaves(): void

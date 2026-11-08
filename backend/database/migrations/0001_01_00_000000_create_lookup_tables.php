@@ -15,11 +15,19 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        Schema::create('hats', function (Blueprint $table) {
+            $table->id();
+            $table->string('slug')->unique();
+            $table->string('name');
+            $table->timestamps();
+        });
+
         Schema::create('minigames', function (Blueprint $table) {
             $table->id();
             $table->string('slug')->unique();
             $table->string('name');
             $table->unsignedSmallInteger('duration_seconds');
+            $table->unsignedInteger('max_score');
             $table->timestamps();
         });
     }

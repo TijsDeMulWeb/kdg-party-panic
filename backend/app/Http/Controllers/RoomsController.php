@@ -14,11 +14,11 @@ class RoomsController extends Controller
     {
         $room = $createRoom->handle($request->user());
 
-        return (new RoomResource($room->load('players')))->response()->setStatusCode(201);
+        return (new RoomResource($room->load('players.hat')))->response()->setStatusCode(201);
     }
 
     public function show(Room $room): RoomResource
     {
-        return new RoomResource($room->load('players'));
+        return new RoomResource($room->load('players.hat'));
     }
 }

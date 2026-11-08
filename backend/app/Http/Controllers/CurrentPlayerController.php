@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateCurrentPlayerRequest;
 use App\Http\Resources\PlayerResource;
 use App\Models\Character;
+use App\Models\Hat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,6 +31,10 @@ class CurrentPlayerController extends Controller
 
         if ($request->has('character')) {
             $player->character_id = Character::where('slug', $request->validated('character'))->value('id');
+        }
+
+        if ($request->has('hat')) {
+            $player->hat_id = Hat::where('slug', $request->validated('hat'))->value('id');
         }
 
         $player->save();

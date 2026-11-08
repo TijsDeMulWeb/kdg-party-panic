@@ -14,9 +14,12 @@ class RoundStarting implements ShouldBroadcastNow
         public MatchRound $round,
     ) {}
 
-    public function broadcastOn(): PresenceChannel
+    /** @return array<int, PresenceChannel> */
+    public function broadcastOn(): array
     {
-        return new PresenceChannel($this->round->room->channelName());
+        $room = $this->round->partyMatch->room;
+
+        return $room ? [new PresenceChannel($room->channelName())] : [];
     }
 
     public function broadcastAs(): string

@@ -47,10 +47,15 @@ class Room extends Model
             ->orderByPivot('seat');
     }
 
-    /** @return HasMany<MatchRound, $this> */
-    public function rounds(): HasMany
+    /** @return HasMany<PartyMatch, $this> */
+    public function matches(): HasMany
     {
-        return $this->hasMany(MatchRound::class);
+        return $this->hasMany(PartyMatch::class);
+    }
+
+    public function activeMatch(): ?PartyMatch
+    {
+        return $this->matches()->inProgress()->latest('id')->first();
     }
 
     public function hasPlayer(User $user): bool
@@ -65,7 +70,7 @@ class Room extends Model
 
     public function isPlaying(): bool
     {
-        return $this->rounds()->inProgress()->exists();
+        return $this->matches()->inProgress()->exists();
     }
 
     public function isHostedBy(User $user): bool

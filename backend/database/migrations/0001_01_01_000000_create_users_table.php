@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('character_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('hat_id')->nullable()->constrained()->nullOnDelete();
             $table->string('email')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();

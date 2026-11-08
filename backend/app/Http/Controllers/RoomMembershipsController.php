@@ -18,7 +18,7 @@ class RoomMembershipsController extends Controller
     {
         $joinRoom->handle($room, $request->user());
 
-        return new RoomResource($room->load('players'));
+        return new RoomResource($room->load('players.hat'));
     }
 
     public function update(UpdateRoomMembershipRequest $request, Room $room): RoomResource
@@ -37,7 +37,7 @@ class RoomMembershipsController extends Controller
 
         broadcast(new RoomUpdated($room))->toOthers();
 
-        return new RoomResource($room->load('players'));
+        return new RoomResource($room->load('players.hat'));
     }
 
     public function destroy(Request $request, Room $room, LeaveRoom $leaveRoom): Response

@@ -1,0 +1,38 @@
+/*
+ * Cartoon cursors. The PNG fallback comes first; browsers that understand
+ * image-set() use the sharp 2x version on retina screens. Hotspots are the
+ * arrow tip (6 5) and the fingertip (10 2).
+ */
+:root {
+    --pp-cursor-arrow: url('/cursors/arrow.png') 6 5, auto;
+    --pp-cursor-pointer: url('/cursors/pointer.png') 10 2, pointer;
+}
+
+html,
+body,
+#app canvas {
+    cursor: var(--pp-cursor-arrow);
+    cursor: image-set(url('/cursors/arrow.png') 1x, url('/cursors/arrow@2x.png') 2x) 6 5, auto;
+}
+
+button:not(:disabled),
+[role='tab'],
+[role='radio'],
+.lobby__code {
+    cursor: var(--pp-cursor-pointer);
+    cursor: image-set(url('/cursors/pointer.png') 1x, url('/cursors/pointer@2x.png') 2x) 10 2, pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'] {
+    cursor: text;
+}
+
+#app canvas.is-dragging {
+    cursor: grabbing;
+}

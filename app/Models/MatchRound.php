@@ -47,11 +47,12 @@ class MatchRound extends Model
 
     public function acceptsResults(): bool
     {
-        if ($this->isFinished() || $this->ends_at === null) {
+        if ($this->isFinished() || $this->starts_at === null) {
             return false;
         }
 
-        return now()->greaterThanOrEqualTo($this->ends_at->subSecond());
+        // Early results are fine: when everyone is out, the round ends before the timer does.
+        return now()->greaterThanOrEqualTo($this->starts_at);
     }
 
     public function submissionWindowClosed(): bool

@@ -79,6 +79,13 @@
     transition: opacity 200ms ease;
 }
 
+/* No touch buttons on desktop: keep the gauge clear of the skater. */
+@media (hover: hover) and (pointer: fine) {
+    .ice-gauge {
+        bottom: 20px;
+    }
+}
+
 .ice-gauge.is-hidden {
     opacity: 0;
 }

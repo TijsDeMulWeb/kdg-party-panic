@@ -1,0 +1,164 @@
+/* Overlays owned by individual minigames. */
+
+/* ---------- Quick Draw ---------- */
+
+.quick-draw {
+    position: absolute;
+    left: 50%;
+    bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.quick-draw__text {
+    padding: 10px 26px;
+    border: 4px solid var(--pp-ink);
+    border-radius: 999px;
+    background: var(--pp-cream);
+    box-shadow: 0 6px 0 var(--pp-ink);
+    font-family: var(--pp-font-display);
+    font-size: clamp(26px, 5vw, 40px);
+    white-space: nowrap;
+}
+
+.quick-draw[data-mode='go'] .quick-draw__text {
+    background: var(--pp-mint);
+    color: #fff;
+    font-size: clamp(48px, 10vw, 80px);
+    -webkit-text-stroke: 0.05em var(--pp-ink);
+    paint-order: stroke fill;
+    animation: bump 300ms cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+
+.quick-draw[data-mode='fake'] .quick-draw__text {
+    background: var(--pp-sun);
+}
+
+.quick-draw__board {
+    order: -1;
+    display: grid;
+    gap: 4px;
+    min-width: 220px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.quick-draw__board:empty {
+    display: none;
+}
+
+.quick-draw__board li {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 12px;
+    border: 3px solid var(--pp-ink);
+    border-radius: 12px;
+    background: rgb(255 250 240 / 0.95);
+    font-weight: 900;
+}
+
+.quick-draw__board li:first-child {
+    background: #fff6d6;
+}
+
+/* ---------- Ice Slide speed gauge ---------- */
+
+.ice-gauge {
+    position: absolute;
+    left: 50%;
+    bottom: max(110px, calc(env(safe-area-inset-bottom) + 100px));
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    transform: translateX(-50%);
+    transition: opacity 200ms ease;
+}
+
+.ice-gauge.is-hidden {
+    opacity: 0;
+}
+
+.ice-gauge__label {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fff;
+    text-shadow: 0 2px 0 rgb(43 35 64 / 0.6);
+}
+
+.ice-gauge__track {
+    position: relative;
+    width: 240px;
+    height: 18px;
+    overflow: visible;
+    border: 3px solid var(--pp-ink);
+    border-radius: 999px;
+    background: var(--pp-cream);
+}
+
+.ice-gauge__fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--pp-sky), var(--pp-mint), var(--pp-coral));
+    transform-origin: left center;
+}
+
+.ice-gauge__ideal {
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    width: 4px;
+    margin-left: -2px;
+    border-radius: 2px;
+    background: var(--pp-ink);
+}
+
+/* ---------- Snowball ammo ---------- */
+
+.ammo-bar {
+    position: absolute;
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 3px solid var(--pp-ink);
+    border-radius: 999px;
+    background: rgb(255 250 240 / 0.92);
+    transform: translateX(-50%);
+}
+
+.ammo-bar__label {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.ammo-bar__ball {
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--pp-ink);
+    border-radius: 50%;
+    background: transparent;
+}
+
+.ammo-bar__ball.is-full {
+    background: #fff;
+    box-shadow: inset -3px -3px 0 #cfe6ff;
+}
+
+@media (pointer: coarse) {
+    .ammo-bar {
+        bottom: auto;
+        top: calc(max(14px, env(safe-area-inset-top)) + 80px);
+    }
+}

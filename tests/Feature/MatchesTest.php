@@ -54,13 +54,13 @@ class MatchesTest extends TestCase
         Event::assertDispatched(RoundStarting::class);
     }
 
-    public function test_results_are_only_accepted_after_the_round_and_within_the_score_limit(): void
+    public function test_results_are_only_accepted_once_the_round_started_and_within_the_score_limit(): void
     {
         [$room, $round] = $this->startedMatch(2);
 
         $this->actingAs($room->host)->postJson(route('roundResults.store', $round), ['score' => 100])->assertJsonValidationErrors('score');
 
-        $this->travelTo($round->ends_at);
+        $this->travelTo($round->starts_at);
 
         $this->actingAs($room->host)
             ->postJson(route('roundResults.store', $round), ['score' => $round->minigame->max_score + 1])
@@ -76,6 +76,19 @@ class MatchesTest extends TestCase
         $this->travelTo($round->ends_at);
 
         $this->actingAs($this->guest())->postJson(route('roundResults.store', $round), ['score' => 10])->assertForbidden();
+    }
+
+    public function test_a_round_ends_early_once_everyone_reported(): void
+    {
+        [$room, $round] = $this->startedMatch(2);
+        [$host, $guest] = $room->players;
+
+        $this->travelTo($round->starts_at->addSeconds(5));
+
+        $this->actingAs($host)->postJson(route('roundResults.store', $round), ['score' => 100])->assertCreated();
+        $this->actingAs($guest)->postJson(route('roundResults.store', $round), ['score' => 50])->assertCreated();
+
+        $this->assertNotNull($round->fresh()->finished_at);
     }
 
     public function test_the_round_is_scored_once_everyone_reported(): void

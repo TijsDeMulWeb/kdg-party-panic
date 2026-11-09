@@ -65,6 +65,7 @@ export class MinigameScene implements GameScene {
     private results: ResultsCard | null = null;
     private lastTick = -1;
     private readonly remoteScores = new Map<number, number>();
+    private readonly remoteOut = new Set<number>();
     private unsubscribeScores: (() => void) | null = null;
 
     constructor(private readonly game: Game, private readonly options: MinigameSceneOptions) {
@@ -109,6 +110,9 @@ export class MinigameScene implements GameScene {
             this.unsubscribeScores = schedule.network.onSnapshot((playerId, snapshot) => {
                 if (snapshot.c !== undefined) {
                     this.remoteScores.set(playerId, snapshot.c);
+                }
+                if (snapshot.o === 1) {
+                    this.remoteOut.add(playerId);
                 }
             });
         }
@@ -169,8 +173,8 @@ export class MinigameScene implements GameScene {
         this.minigame.update(dt, this.game.input.snapshot, elapsed);
 
         if (this.phase === 'playing') {
-            // In a party an eliminated player keeps watching until time is up.
-            const finishedEarly = !this.isParty && this.minigame.isOver();
+            // In a party an eliminated player keeps watching, until everyone is out.
+            const finishedEarly = this.minigame.isOver() && this.everyoneElseIsOut();
             if (remaining <= 0 || finishedEarly) {
                 this.setPhase('ending', remaining <= 0);
             }
@@ -179,6 +183,17 @@ export class MinigameScene implements GameScene {
         if (this.phase === 'ending' && this.phaseTime >= ENDING_SECONDS) {
             this.setPhase('results');
         }
+    }
+
+    /** Solo: always. Party: every online opponent reported being out of play. */
+    private everyoneElseIsOut(): boolean {
+        const network = this.options.schedule?.network;
+
+        if (!network) {
+            return true;
+        }
+
+        return network.remotePlayers.every((player) => !network.isOnline(player.id) || this.remoteOut.has(player.id));
     }
 
     /** Seconds until play starts (negative once playing). */

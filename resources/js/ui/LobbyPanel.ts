@@ -209,6 +209,7 @@ export class LobbyPanel {
         try {
             await action();
         } catch (error) {
+            console.error('[party]', error);
             this.showMessage(error instanceof Error ? error.message : 'Something went wrong.');
         } finally {
             this.busy = false;

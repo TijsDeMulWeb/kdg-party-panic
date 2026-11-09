@@ -120,6 +120,7 @@ export class PartyMenu {
         try {
             await action();
         } catch (error) {
+            console.error('[party]', error);
             this.showError(error instanceof Error ? error.message : 'Something went wrong.');
         } finally {
             this.busy = false;

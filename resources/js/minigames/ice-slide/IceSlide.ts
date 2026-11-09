@@ -213,7 +213,7 @@ class IceSlide implements Minigame {
 
     private cameraTarget(): THREE.Vector3 {
         const feet = this.stage.position;
-        return new THREE.Vector3(feet.x * 0.3, 0, Math.min(feet.z, 2) - 3);
+        return new THREE.Vector3(feet.x * 0.3, 0, feet.z - 3);
     }
 
     private buildRink(): void {

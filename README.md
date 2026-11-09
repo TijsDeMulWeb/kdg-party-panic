@@ -6,36 +6,30 @@ Browser-based multiplayer arcade party game. 1 to 4 players, fourteen short mini
 
 ## Layout
 
+One Laravel app: the API, Pusher broadcasting and the game itself.
+
 ```
-client/    Game client (TypeScript, Three.js, Vite)
-backend/   Laravel API + Pusher broadcasting (phase 3)
-docs/      Architecture notes
+app/, routes/, database/   Laravel API (rooms, matches, runs, leaderboards)
+resources/js/              Game (TypeScript, Three.js), entry resources/js/app.ts
+resources/views/game.blade.php   The page that loads the game
+docs/                      Architecture and deploy notes
 ```
 
 ## Running locally
 
-Solo play only needs the client. Private parties also need the Laravel backend (Herd) and a realtime server (Reverb locally, Pusher in production).
+Served by Herd at http://party-panic.test.
 
 ```bash
-# Backend: served by Herd at http://party-panic.test
-cd backend
 composer install
-cp .env.example .env && php artisan key:generate   # set DB_* for MySQL
-php artisan migrate --seed
-php artisan reverb:start                           # realtime server on :8080
-
-# Client
-cd client
 npm install
-cp .env.example .env.local                         # VITE_PUSHER_KEY = REVERB_APP_KEY
-npm run dev                                        # http://localhost:5173
+cp .env.example .env && php artisan key:generate   # DB_* for MySQL, PUSHER_* keys
+php artisan migrate --seed
+npm run dev                                        # hot reload on http://party-panic.test
 ```
 
-The Vite dev server proxies `/api` and `/broadcasting` to the backend, so the game and the API share one origin (session cookie, CSRF).
+`npm run build` writes the production game to `public/build`. Private parties need `BROADCAST_CONNECTION=pusher` and the `PUSHER_*` keys in `.env`; the game reads them through the `VITE_PUSHER_*` lines.
 
-To use Pusher instead of Reverb: set `BROADCAST_CONNECTION=pusher` and the `PUSHER_*` keys in `backend/.env`, and `VITE_PUSHER_KEY` and `VITE_PUSHER_CLUSTER` (empty host and port) in the client.
-
-Backend tests: `cd backend && php artisan test`.
+Tests: `php artisan test` (PHP) and `npm run typecheck` (game).
 
 Scheduled tasks: `php artisan schedule:work` locally (or `schedule:run` from cron) runs `rooms:prune-stale` hourly.
 

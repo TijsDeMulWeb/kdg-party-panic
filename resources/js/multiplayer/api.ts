@@ -76,5 +76,5 @@ function errorMessage(payload: unknown, status: number): string {
         return 'The party server is not reachable right now.';
     }
 
-    return 'Something went wrong.';
+    return `Something went wrong (HTTP ${status}).`;
 }

@@ -1,6 +1,6 @@
 # Deploying to Combell (shared hosting)
 
-Party Panic is one Laravel app: it serves the API **and** the built game (`client/` is built into `backend/public/app`). Realtime runs on Pusher, so the host only needs PHP and MySQL: no long-running processes, no Node.
+Party Panic is one Laravel app: it serves the API **and** the game (`resources/js`, built by Vite into `public/build`). Realtime runs on Pusher, so the host only needs PHP and MySQL: no long-running processes, no Node.
 
 ## Requirements on the hosting
 
@@ -14,7 +14,7 @@ Party Panic is one Laravel app: it serves the API **and** the built game (`clien
 1. **Database**: create one in the control panel. Note host, name, user and password.
 2. **Folder and document root**: upload the app to a folder outside the public web root, e.g. `~/partypanic`, and point the domain's document root to `~/partypanic/public`. If the panel doesn't allow changing the document root, put the app next to `www` and replace `www` with a symlink to `partypanic/public`.
 3. **Pusher**: in the Pusher dashboard, app settings, switch on **Enable client events**.
-4. **Local build settings**: copy `client/.env.production.example` to `client/.env.production.local` and fill in the Pusher key and cluster.
+4. **Local build settings**: the game is built on your laptop and gets its Pusher key and cluster from the `VITE_PUSHER_*` lines in your local `.env` (they point to the `PUSHER_*` values). Use the same Pusher app as the server.
 5. **First deploy** (from your laptop):
 
    ```bash

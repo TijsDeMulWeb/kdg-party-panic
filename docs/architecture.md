@@ -1,9 +1,9 @@
 # Architecture
 
-## Client layers
+## Game layers (resources/js)
 
 ```
-main.ts            Entry point. Creates Game and GameManager, nothing else.
+app.ts             Entry point. Creates Game and GameManager, nothing else.
 core/              Engine level, no game rules.
   Game             Renderer, main loop, owns InputManager and SceneManager.
   GameManager      App flow: which scene is shown, local player choices.
@@ -53,7 +53,7 @@ A minigame is a folder in `minigames/` that exports a `MinigameDefinition` (name
 
 ## Multiplayer (Laravel + Pusher protocol)
 
-Laravel is the authority for everything that is not movement: guest players, rooms, seats, characters, ready states, which minigame is played, its seed and its exact start time. Realtime traffic goes over a Pusher-protocol presence channel per room (`presence-room.{code}`): Pusher Channels in production, Laravel Reverb locally. The client uses `pusher-js` directly, no Echo.
+Laravel is the authority for everything that is not movement: guest players, rooms, seats, characters, ready states, which minigame is played, its seed and its exact start time. Realtime traffic goes over a Pusher-protocol presence channel per room (`presence-room.{code}`): Pusher Channels. The game uses `pusher-js` directly, no Echo.
 
 - **Guests are users.** A guest is a `users` row without email or password, logged in with the normal session guard. Phase 6 can upgrade the same row to a full account.
 - **Server events**: `room.updated` (full roster after any change) and `round.starting` (minigame, seed, `starts_at` in server ms). Both are `ShouldBroadcastNow`, so no queue worker is needed.
@@ -61,7 +61,7 @@ Laravel is the authority for everything that is not movement: guest players, roo
 - **One clock.** Clients estimate their offset to server time via `GET /api/clock` (lowest round trip of 5 samples). Countdown, play time and tile drops all follow the server clock, so every client drops the same tiles at the same moment.
 - **Same seed, same game.** The round's seed drives the minigame's pure rules module, so all clients build identical layouts without sending them.
 - **Bumping without authority.** Each client pushes only its own character out of the others (`WorldWithMovingObstacles`). Symmetric, and nobody moves someone else.
-- **Disconnects.** Presence shows a player as offline immediately. Laravel removes members who are no longer subscribed when someone joins a full room or the host starts (it asks the Pusher/Reverb HTTP API who is in the channel), with a 15 second grace period for players who are still connecting. Reloading the page returns to the lobby via the remembered room code and the session cookie.
+- **Disconnects.** Presence shows a player as offline immediately. Laravel removes members who are no longer subscribed when someone joins a full room or the host starts (it asks the Pusher HTTP API who is in the channel), with a 15 second grace period for players who are still connecting. Reloading the page returns to the lobby via the remembered room code and the session cookie.
 
 **Trade-off.** Clients are authoritative over their own movement and survival. Fine for private parties among friends; scores that go on global leaderboards need extra validation (phase 6).
 

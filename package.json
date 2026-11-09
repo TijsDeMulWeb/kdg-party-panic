@@ -1,0 +1,21 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "name": "party-panic",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc --noEmit && vite build",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "pusher-js": "^8.6.0",
+        "three": "^0.187.0"
+    },
+    "devDependencies": {
+        "@types/three": "^0.187.0",
+        "laravel-vite-plugin": "^3.1",
+        "typescript": "^7.0.2",
+        "vite": "^8.3.6"
+    }
+}

@@ -2,34 +2,38 @@
 
 namespace App\Support;
 
+use App\Enums\Badge;
 use App\Models\User;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
+use function Illuminate\Support\defer;
+
 /**
  * Sends badge progress of a player to the Game Launcher.
  *
- * Guests have no launcher token and are skipped. A failing request is reported but never breaks the game.
+ * Guests have no launcher token and are skipped. Requests are sent after the response, so they never slow down
+ * the game, and a failing request is reported but never breaks it.
  */
 class LauncherBadges
 {
     /** Earn a badge without a goal in one go. */
-    public function earn(User $user, string $key): void
+    public function earn(User $user, Badge $badge): void
     {
-        $this->send($user, $key, []);
+        $this->send($user, $badge, []);
     }
 
     /** Add to the progress of a badge with a goal. */
-    public function increment(User $user, string $key, int $amount = 1): void
+    public function increment(User $user, Badge $badge, int $amount = 1): void
     {
-        $this->send($user, $key, ['increment' => $amount]);
+        $this->send($user, $badge, ['increment' => $amount]);
     }
 
     /** Set the progress of a badge to an exact value. The launcher never lowers progress. */
-    public function setProgress(User $user, string $key, int $progress): void
+    public function setProgress(User $user, Badge $badge, int $progress): void
     {
-        $this->send($user, $key, ['progress' => $progress]);
+        $this->send($user, $badge, ['progress' => $progress]);
     }
 
     /**
@@ -55,17 +59,19 @@ class LauncherBadges
     /**
      * @param  array<string, int>  $data
      */
-    private function send(User $user, string $key, array $data): void
+    private function send(User $user, Badge $badge, array $data): void
     {
         if (! $user->launcher_token) {
             return;
         }
 
-        try {
-            $this->client($user)->put("badges/{$key}", $data)->throw();
-        } catch (Throwable $exception) {
-            report($exception);
-        }
+        defer(function () use ($user, $badge, $data) {
+            try {
+                $this->client($user)->put("badges/{$badge->value}", $data)->throw();
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        });
     }
 
     private function client(User $user): PendingRequest

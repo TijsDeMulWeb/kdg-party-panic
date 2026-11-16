@@ -3,13 +3,23 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/mctantwerp/theagency2627-socialite-launcher.git"
+        }
+    ],
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.17",
         "laravel/reverb": "^1.0",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "theagency2627/socialite-launcher": "dev-develop"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

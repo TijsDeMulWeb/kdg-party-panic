@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'character_id', 'hat_id', 'email', 'password'])]
+#[Fillable(['name', 'launcher_id', 'character_id', 'hat_id', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -65,8 +65,13 @@ class User extends Authenticatable
         return $this->hasMany(MatchPlayer::class);
     }
 
+    public function isLauncherAccount(): bool
+    {
+        return $this->launcher_id !== null;
+    }
+
     public function isGuest(): bool
     {
-        return $this->email === null;
+        return $this->email === null && $this->launcher_id === null;
     }
 }

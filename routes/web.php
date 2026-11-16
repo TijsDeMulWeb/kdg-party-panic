@@ -8,9 +8,11 @@ use App\Http\Controllers\DailyChallengeRunsController;
 use App\Http\Controllers\DailyChallengesController;
 use App\Http\Controllers\FinalizeRoundController;
 use App\Http\Controllers\GameController;
+use App\Http\Controllers\HandleLauncherCallbackController;
 use App\Http\Controllers\LeaderboardsController;
 use App\Http\Controllers\MatchHistoryController;
 use App\Http\Controllers\PlayersController;
+use App\Http\Controllers\RedirectToLauncherController;
 use App\Http\Controllers\RoomMembershipsController;
 use App\Http\Controllers\RoomsController;
 use App\Http\Controllers\RoundResultsController;
@@ -20,6 +22,9 @@ use App\Http\Controllers\StartMatchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', GameController::class)->name('home');
+
+Route::get('auth/redirect', RedirectToLauncherController::class)->name('launcher.redirect');
+Route::get('auth/callback', HandleLauncherCallbackController::class)->name('launcher.callback');
 
 Route::prefix('api')->group(function () {
     Route::get('clock', ClockController::class)->name('clock.show');

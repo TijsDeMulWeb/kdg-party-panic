@@ -6,6 +6,7 @@ export interface Player {
     character: string | null;
     hat: string | null;
     is_guest: boolean;
+    is_launcher: boolean;
     email: string | null;
 }
 

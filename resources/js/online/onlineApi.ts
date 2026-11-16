@@ -1,7 +1,7 @@
 import { apiRequest } from '../multiplayer/api';
 import { fetchCurrentPlayer, savePlayer } from '../multiplayer/partyApi';
 import type { Player } from '../multiplayer/types';
-import { displayName, type LocalProfile } from './profile';
+import { adoptLauncherName, displayName, type LocalProfile } from './profile';
 
 interface Wrapped<T> {
     data: T;
@@ -57,6 +57,7 @@ export async function ensureSession(profile: LocalProfile): Promise<Player> {
     const current = await fetchCurrentPlayer();
 
     if (current) {
+        adoptLauncherName(profile, current);
         return current;
     }
 
@@ -70,7 +71,10 @@ export async function syncProfile(profile: LocalProfile): Promise<Player | null>
         return null;
     }
 
-    return savePlayer(displayName(profile), profile.character.id, profile.hat);
+    const player = await savePlayer(displayName(profile), profile.character.id, profile.hat);
+    adoptLauncherName(profile, player);
+
+    return player;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {

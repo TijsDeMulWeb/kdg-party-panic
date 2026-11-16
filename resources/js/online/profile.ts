@@ -29,6 +29,18 @@ export function saveProfile(profile: LocalProfile): void {
     writeStorage(HAT_KEY, profile.hat ?? '');
 }
 
+/** Launcher accounts get their name from the launcher, so the local profile follows the server. */
+export function adoptLauncherName(profile: LocalProfile, player: { name: string; is_launcher: boolean }): boolean {
+    if (!player.is_launcher || profile.name === player.name) {
+        return false;
+    }
+
+    profile.name = player.name;
+    saveProfile(profile);
+
+    return true;
+}
+
 /** A friendly default for players who never typed a name. */
 export function displayName(profile: LocalProfile): string {
     if (profile.name.trim()) {

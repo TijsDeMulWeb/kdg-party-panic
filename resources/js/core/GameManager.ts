@@ -12,7 +12,7 @@ import { PartySession } from '../multiplayer/PartySession';
 import { createMinigameNetwork } from '../multiplayer/minigameNetwork';
 import { savePlayer } from '../multiplayer/partyApi';
 import type { RoundInfo, RoundOutcome } from '../multiplayer/types';
-import { startDailyRun, startRun, submitRun, type RunInfo } from '../online/onlineApi';
+import { recordFreePlay, startDailyRun, startRun, submitRun, type RunInfo } from '../online/onlineApi';
 import { displayName, loadProfile, saveProfile, type LocalProfile } from '../online/profile';
 import { randomSeed } from '../utils/random';
 
@@ -119,6 +119,8 @@ export class GameManager {
     }
 
     startFreePlay(): void {
+        recordFreePlay();
+
         void this.game.scenes.switchTo(
             new PlaygroundScene(this.game, {
                 character: this.profile.character,

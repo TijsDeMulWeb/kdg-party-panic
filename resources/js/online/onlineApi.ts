@@ -91,6 +91,11 @@ export async function startRun(profile: LocalProfile, minigame: string): Promise
     }
 }
 
+/** Tells the server the player started Free Play, which earns a launcher badge. Failing silently is fine. */
+export function recordFreePlay(): void {
+    void apiRequest<void>('POST', '/api/free-play').catch(() => undefined);
+}
+
 export async function startDailyRun(profile: LocalProfile): Promise<RunInfo> {
     await ensureSession(profile);
     return (await apiRequest<Wrapped<RunInfo>>('POST', '/api/daily-challenge/runs')).data;

@@ -27,7 +27,7 @@ class CurrentPlayerController extends Controller
     {
         $player = $request->user();
 
-        if ($request->has('name')) {
+        if ($request->has('name') && ! $player->isLauncherAccount()) {
             $player->name = $request->validated('name');
         }
 

@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->unsignedBigInteger('launcher_id')->nullable()->unique();
             $table->foreignId('character_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('hat_id')->nullable()->constrained()->nullOnDelete();
             $table->string('email')->nullable()->unique();

@@ -2,7 +2,7 @@ import { MINIGAMES } from '../minigames/registry';
 import { fetchCurrentPlayer } from '../multiplayer/partyApi';
 import type { Player } from '../multiplayer/types';
 import { fetchMatchHistory, login, logout, register, syncProfile } from '../online/onlineApi';
-import type { LocalProfile } from '../online/profile';
+import { adoptLauncherName, type LocalProfile } from '../online/profile';
 import { getPersonalBest } from '../scoring/personalBest';
 import { el } from './dom';
 import { MenuPanel } from './MenuPanel';
@@ -19,6 +19,8 @@ const ORDINALS = ['1st', '2nd', '3rd', '4th'];
 export class ProfileMenu {
     private readonly panel: MenuPanel;
     private readonly nameInput: HTMLInputElement;
+    private readonly nameField: HTMLElement;
+    private nameIsLocked = false;
     private readonly account = el('div', { className: 'party-menu__panel' });
     private readonly history = el('div', { className: 'party-menu__panel' });
     private readonly bests = el('div', { className: 'party-menu__panel' });
@@ -26,11 +28,13 @@ export class ProfileMenu {
     constructor(parent: HTMLElement, private readonly options: ProfileMenuOptions) {
         this.panel = new MenuPanel(parent, 'Profile', 'Your name, account and history.', () => this.close(), 'profile-menu');
         this.nameInput = el('input', { className: 'pp-input', attrs: { type: 'text', maxlength: '16', 'aria-label': 'Your name', autocomplete: 'nickname' } });
-        this.nameInput.addEventListener('change', () => this.update({ name: this.nameInput.value.trim() }));
+        this.nameInput.addEventListener('change', () => this.updateName());
 
+
+        this.nameField = el('label', { className: 'party-menu__panel' }, [el('span', { className: 'party-menu__label', text: 'Name' }), this.nameInput]);
 
         this.panel.content.append(
-            el('label', { className: 'party-menu__panel' }, [el('span', { className: 'party-menu__label', text: 'Name' }), this.nameInput]),
+            this.nameField,
             this.account,
             this.history,
             this.bests,
@@ -49,8 +53,14 @@ export class ProfileMenu {
     }
 
     private close(): void {
-        this.update({ name: this.nameInput.value.trim() });
+        this.updateName();
         this.options.onBack();
+    }
+
+    private updateName(): void {
+        if (!this.nameIsLocked) {
+            this.update({ name: this.nameInput.value.trim() });
+        }
     }
 
     private update(changes: Partial<LocalProfile>): void {
@@ -90,10 +100,17 @@ export class ProfileMenu {
             return;
         }
 
+        this.nameIsLocked = player?.is_launcher ?? false;
+        this.nameField.style.display = this.nameIsLocked ? 'none' : '';
+
+        if (player && adoptLauncherName(this.options.profile, player)) {
+            this.options.onChange(this.options.profile);
+        }
+
         if (player && !player.is_guest) {
             this.account.replaceChildren(
                 el('span', { className: 'party-menu__label', text: 'Account' }),
-                el('p', { className: 'party-menu__hint', text: `Logged in as ${player.email}` }),
+                el('p', { className: 'party-menu__hint', text: `Logged in as ${player.email ?? player.name}` }),
                 el('button', { className: 'pp-button', text: 'Log out', onClick: () => void logout().then(() => this.renderAccount()) }),
             );
         } else {
@@ -128,6 +145,7 @@ export class ProfileMenu {
                 el('button', { className: 'pp-button pp-button--primary', text: 'Create account', onClick: () => run(() => register(this.options.profile.name || 'Player', email.value, password.value)) }),
                 el('button', { className: 'pp-button', text: 'Log in', onClick: () => run(() => login(email.value, password.value)) }),
             ]),
+            el('a', { className: 'pp-button', text: 'Log in with Game Launcher', attrs: { href: '/auth/redirect' } }),
             error,
         );
     }

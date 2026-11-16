@@ -27,6 +27,7 @@ class HandleLauncherCallbackController extends Controller
         }
 
         $user->launcher_id = $launcherUser->getId();
+        $user->launcher_token = $launcherUser->token;
         $user->save();
 
         Auth::login($user, remember: true);

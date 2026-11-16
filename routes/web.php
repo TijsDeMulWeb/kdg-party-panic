@@ -7,6 +7,7 @@ use App\Http\Controllers\DailyChallengeLeaderboardController;
 use App\Http\Controllers\DailyChallengeRunsController;
 use App\Http\Controllers\DailyChallengesController;
 use App\Http\Controllers\FinalizeRoundController;
+use App\Http\Controllers\FreePlayController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\HandleLauncherCallbackController;
 use App\Http\Controllers\LeaderboardsController;
@@ -28,6 +29,7 @@ Route::get('auth/callback', HandleLauncherCallbackController::class)->name('laun
 
 Route::prefix('api')->group(function () {
     Route::get('clock', ClockController::class)->name('clock.show');
+    Route::post('free-play', FreePlayController::class)->name('freePlay.store');
 
     Route::post('players', [PlayersController::class, 'store'])->name('players.store');
     Route::get('me', [CurrentPlayerController::class, 'show'])->name('currentPlayer.show');

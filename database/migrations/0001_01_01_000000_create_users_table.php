@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->unsignedBigInteger('launcher_id')->nullable()->unique();
+            $table->text('launcher_token')->nullable();
             $table->foreignId('character_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('hat_id')->nullable()->constrained()->nullOnDelete();
             $table->string('email')->nullable()->unique();

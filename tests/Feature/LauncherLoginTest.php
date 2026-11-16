@@ -53,6 +53,17 @@ class LauncherLoginTest extends TestCase
         $this->assertFalse($user->isGuest());
     }
 
+    public function test_the_launcher_token_is_kept_to_send_badges(): void
+    {
+        $launcherUser = $this->launcherUser();
+        $launcherUser->token = 'player-token';
+        $this->fakeLauncherLogin($launcherUser);
+
+        $this->get(route('launcher.callback'));
+
+        $this->assertSame('player-token', User::firstWhere('launcher_id', 7)->launcher_token);
+    }
+
     public function test_long_first_names_are_cut_to_fit_the_game(): void
     {
         $this->fakeLauncherLogin($this->launcherUser(firstName: 'Maximiliaan-Alexander-Jozef'));

@@ -15,6 +15,7 @@ class FreePlayTest extends TestCase
     {
         parent::setUp();
 
+        $this->withoutDefer();
         config(['services.launcher.url' => 'http://launcher.test']);
     }
 

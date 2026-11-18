@@ -2,6 +2,8 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Badges\AwardMatchBadges;
+use App\Actions\Badges\AwardRoundBadges;
 use App\Events\RoomUpdated;
 use App\Events\RoundFinished;
 use App\Events\RoundStarting;
@@ -26,6 +28,8 @@ class FinalizeRound
     public function __construct(
         protected ScheduleRound $scheduleRound,
         protected MatchStandings $standings,
+        protected AwardRoundBadges $awardRoundBadges,
+        protected AwardMatchBadges $awardMatchBadges,
     ) {}
 
     public function handle(MatchRound $round): bool
@@ -46,6 +50,7 @@ class FinalizeRound
         $match->players->each(fn (MatchPlayer $player) => $round->results()->firstOrCreate(['user_id' => $player->user_id]));
 
         $this->assignPlacements($round);
+        $this->awardRoundBadges->handle($round);
 
         $match->players->each(fn (MatchPlayer $player) => $player->update([
             'total_points' => RoundResult::whereIn('match_round_id', $match->rounds()->select('id'))->where('user_id', $player->user_id)->sum('points'),
@@ -121,6 +126,8 @@ class FinalizeRound
         $this->standings->for($match)->each(fn (array $row) => $match->players()
             ->where('user_id', $row['player_id'])
             ->update(['final_rank' => $row['rank']]));
+
+        $this->awardMatchBadges->handle($match);
 
         if ($match->room) {
             broadcast(new RoomUpdated($match->room));

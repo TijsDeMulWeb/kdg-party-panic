@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Badge;
 use App\Models\User;
 use App\Support\LauncherBadges;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,7 @@ class LauncherBadgesTest extends TestCase
     {
         parent::setUp();
 
+        $this->withoutDefer();
         config(['services.launcher.url' => 'http://launcher.test']);
     }
 
@@ -32,10 +34,10 @@ class LauncherBadgesTest extends TestCase
     {
         Http::fake();
 
-        app(LauncherBadges::class)->earn($this->launcherPlayer(), 'eerste-ronde');
+        app(LauncherBadges::class)->earn($this->launcherPlayer(), Badge::FirstParty);
 
         Http::assertSent(fn ($request) => $request->method() === 'PUT'
-            && $request->url() === 'http://launcher.test/api/badges/eerste-ronde'
+            && $request->url() === 'http://launcher.test/api/badges/eerste-feest'
             && $request->hasHeader('Authorization', 'Bearer player-token'));
     }
 
@@ -43,7 +45,7 @@ class LauncherBadgesTest extends TestCase
     {
         Http::fake();
 
-        app(LauncherBadges::class)->increment($this->launcherPlayer(), 'muntenjager', 3);
+        app(LauncherBadges::class)->increment($this->launcherPlayer(), Badge::ArcadeVeteran, 3);
 
         Http::assertSent(fn ($request) => $request['increment'] === 3);
     }
@@ -52,7 +54,7 @@ class LauncherBadgesTest extends TestCase
     {
         Http::fake();
 
-        app(LauncherBadges::class)->earn(User::factory()->create(), 'eerste-ronde');
+        app(LauncherBadges::class)->earn(User::factory()->create(), Badge::FirstParty);
 
         Http::assertNothingSent();
     }
@@ -61,7 +63,7 @@ class LauncherBadgesTest extends TestCase
     {
         Http::fake(['*' => Http::response([], 500)]);
 
-        app(LauncherBadges::class)->earn($this->launcherPlayer(), 'eerste-ronde');
+        app(LauncherBadges::class)->earn($this->launcherPlayer(), Badge::FirstParty);
 
         $this->assertTrue(true);
     }

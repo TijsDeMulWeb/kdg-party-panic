@@ -2,6 +2,7 @@
 
 namespace App\Actions\Runs;
 
+use App\Actions\Badges\AwardRunBadges;
 use App\Models\Run;
 use Illuminate\Validation\ValidationException;
 
@@ -12,6 +13,10 @@ use Illuminate\Validation\ValidationException;
  */
 class SubmitRun
 {
+    public function __construct(
+        protected AwardRunBadges $awardRunBadges,
+    ) {}
+
     public function handle(Run $run, int $score): Run
     {
         $run->loadMissing('minigame');
@@ -33,6 +38,8 @@ class SubmitRun
             'submitted_at' => now(),
             'is_official' => $this->isFirstDailyAttempt($run),
         ])->save();
+
+        $this->awardRunBadges->handle($run);
 
         return $run;
     }

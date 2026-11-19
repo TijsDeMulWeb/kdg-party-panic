@@ -86,6 +86,7 @@ class HotPotato implements Minigame {
                 this.receivePasses(snapshot.e);
                 if (snapshot.o === 1) {
                     this.out.add(playerId);
+                    this.stage.remotes?.hide(playerId);
                 }
             });
         }
@@ -284,6 +285,7 @@ class HotPotato implements Minigame {
         audio.play('out');
 
         this.out.add(holder);
+        this.stage.remotes?.hide(holder);
         this.setHolder(null);
 
         if (holder === this.myId) {

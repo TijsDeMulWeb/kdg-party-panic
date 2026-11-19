@@ -29,8 +29,9 @@ export class StandingsPanel {
 
     showRound(outcome: RoundOutcome): void {
         this.title.textContent = `Round ${outcome.round.number} results`;
+        const unplaced = outcome.round.minigame === 'kart-race' ? 'DNF' : 'Out';
         const rows = outcome.results.map((result, index) => {
-            const placement = result.placement === null ? 'DNF' : ORDINALS[result.placement - 1];
+            const placement = result.placement === null ? unplaced : ORDINALS[result.placement - 1] ?? `${result.placement}th`;
             const row = el('li', { className: `standings-row ${result.player_id === this.playerId ? 'is-me' : ''}` }, [
                 el('span', { className: `standings-row__place place-${result.placement ?? 0}`, text: placement }),
                 this.swatch(outcome.standings.find((standing) => standing.player_id === result.player_id)?.character),

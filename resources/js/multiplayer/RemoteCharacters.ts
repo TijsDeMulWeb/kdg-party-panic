@@ -17,6 +17,7 @@ interface Remote {
     lastGrounded: boolean;
     lastVertical: number;
     out: boolean;
+    hidden: boolean;
     online: boolean;
 }
 
@@ -38,7 +39,7 @@ export class RemoteCharacters {
             model.root.add(createNameTag(player.name, player.character.body, false, 1.7));
             model.root.visible = false;
             scene.add(model.root);
-            this.remotes.set(player.id, { player, model, buffer: [], lastGrounded: true, lastVertical: 0, out: false, online: network.isOnline(player.id) });
+            this.remotes.set(player.id, { player, model, buffer: [], lastGrounded: true, lastVertical: 0, out: false, hidden: false, online: network.isOnline(player.id) });
         }
 
         this.unsubscribers.push(
@@ -58,7 +59,7 @@ export class RemoteCharacters {
             }
 
             const { model } = remote;
-            model.root.visible = !remote.out || sample.y > -6;
+            model.root.visible = !remote.hidden && (!remote.out || sample.y > -6);
             model.root.position.set(sample.x, sample.y, sample.z);
             model.root.rotation.y = sample.f;
 
@@ -79,6 +80,16 @@ export class RemoteCharacters {
     /** Adds something to a remote player's character, e.g. the kart they sit in. */
     attach(playerId: number, object: THREE.Object3D): void {
         this.remotes.get(playerId)?.model.root.add(object);
+    }
+
+    /** Removes a player from the scene for good, e.g. after they are eliminated. */
+    hide(playerId: number): void {
+        const remote = this.remotes.get(playerId);
+
+        if (remote) {
+            remote.hidden = true;
+            remote.model.root.visible = false;
+        }
     }
 
     /** Where another player currently appears, or null if hidden/offline. */

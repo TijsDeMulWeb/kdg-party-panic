@@ -12,6 +12,7 @@ export class GameHud {
     private readonly callouts: HTMLElement;
     private readonly scoreboard: HTMLElement;
     private score = 0;
+    private readonly outBanner: HTMLElement;
     private shownSeconds = -1;
 
     constructor(title: string, characterName: string, onExit: () => void) {
@@ -20,6 +21,7 @@ export class GameHud {
         this.timer = el('div', { className: 'game-hud__timer' }, [this.timerValue]);
         this.callouts = el('div', { className: 'game-hud__callouts' });
         this.scoreboard = el('ol', { className: 'game-hud__scoreboard' });
+        this.outBanner = el('div', { className: 'game-hud__out is-hidden', text: "You're out" });
 
         this.root = el('div', { className: 'game-hud' }, [
             el('div', { className: 'game-hud__top' }, [
@@ -31,6 +33,7 @@ export class GameHud {
                 el('div', { className: 'hud__badge' }, [el('span', { className: 'hud__badge-label', text: title }), el('span', { text: characterName })]),
             ]),
             this.scoreboard,
+            this.outBanner,
             this.callouts,
         ]);
     }
@@ -72,10 +75,15 @@ export class GameHud {
         node.addEventListener('animationend', () => node.remove());
     }
 
+    /** Persistent banner for a player who can no longer change their score. */
+    setOut(out: boolean): void {
+        this.outBanner.classList.toggle('is-hidden', !out);
+    }
+
     /** Live party ranking in the corner, highest score first. */
-    setScoreboard(rows: { name: string; color: number; score: number; isMe: boolean }[]): void {
+    setScoreboard(rows: { name: string; color: number; score: number; isMe: boolean; out: boolean }[]): void {
         const sorted = [...rows].sort((a, b) => b.score - a.score);
-        const signature = sorted.map((row) => `${row.name}:${row.score}`).join('|');
+        const signature = sorted.map((row) => `${row.name}:${row.score}:${row.out}`).join('|');
 
         if (this.scoreboard.dataset.signature === signature) {
             return;
@@ -86,7 +94,7 @@ export class GameHud {
             ...sorted.map((row) => {
                 const swatch = el('span', { className: 'game-hud__scoreboard-swatch' });
                 swatch.style.background = `#${row.color.toString(16).padStart(6, '0')}`;
-                return el('li', { className: row.isMe ? 'is-me' : '' }, [swatch, el('span', { text: row.name }), el('strong', { text: String(row.score) })]);
+                return el('li', { className: `${row.isMe ? 'is-me' : ''} ${row.out ? 'is-out' : ''}` }, [swatch, el('span', { text: row.name }), el('strong', { text: String(row.score) })]);
             }),
         );
     }

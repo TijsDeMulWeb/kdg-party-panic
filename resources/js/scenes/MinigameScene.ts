@@ -164,6 +164,7 @@ export class MinigameScene implements GameScene {
                 this.tick(Math.ceil(remaining));
             }
             this.updateScoreboard();
+            this.hud.setOut(this.isParty && this.minigame.isOver());
             this.countdown.update(untilStart);
             if (this.phaseTime > 0.7) {
                 this.countdown.unmount();
@@ -233,6 +234,7 @@ export class MinigameScene implements GameScene {
         }
 
         if (phase === 'ending') {
+            this.hud.setOut(false);
             this.game.input.setEnabled(false);
             this.countdown.unmount();
             if (timeUp) {
@@ -262,12 +264,13 @@ export class MinigameScene implements GameScene {
         }
 
         const rows = [
-            { name: 'You', color: this.options.character.body, score: this.minigame.getScore(), isMe: true },
+            { name: 'You', color: this.options.character.body, score: this.minigame.getScore(), isMe: true, out: this.minigame.isOver() },
             ...network.remotePlayers.map((player) => ({
                 name: player.name,
                 color: player.character.body,
                 score: this.remoteScores.get(player.id) ?? 0,
                 isMe: false,
+                out: this.remoteOut.has(player.id),
             })),
         ];
 

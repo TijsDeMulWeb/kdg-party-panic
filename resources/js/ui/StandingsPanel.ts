@@ -46,7 +46,7 @@ export class StandingsPanel {
     }
 
     showStandings(outcome: RoundOutcome): void {
-        this.title.textContent = outcome.match_finished ? 'Final standings' : 'Tournament standings';
+        this.title.textContent = outcome.match_finished || outcome.round.number >= outcome.round.total_rounds ? 'Final standings' : 'Tournament standings';
         const leader = Math.max(1, ...outcome.standings.map((row) => row.total_points));
         const rows = outcome.standings.map((row: StandingRow, index) => {
             const bar = el('span', { className: 'standings-row__bar' });

@@ -170,8 +170,15 @@ export class StandingsScene implements GameScene {
         }
     }
 
+    /** The server marks the round finished slightly before the match, so the last round also counts as the end. */
+    private isMatchFinished(): boolean {
+        const { round } = this.options;
+
+        return Boolean(this.outcome?.match_finished) || round.number >= round.total_rounds;
+    }
+
     private updateFooter(): void {
-        if (this.outcome?.match_finished) {
+        if (this.isMatchFinished()) {
             this.panel.setFooter('And the winner is…');
             return;
         }
@@ -186,7 +193,7 @@ export class StandingsScene implements GameScene {
     }
 
     private advance(): void {
-        if (this.outcome?.match_finished) {
+        if (this.outcome && this.isMatchFinished()) {
             this.setStep('done');
             this.options.onMatchFinished(this.outcome);
             return;

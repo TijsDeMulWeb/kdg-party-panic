@@ -22,7 +22,7 @@ class HandleLauncherCallbackController extends Controller
 
         $user = User::firstWhere('launcher_id', $launcherUser->getId()) ?? $this->guestOrNewUser($request);
 
-        if (! $user->exists) {
+        if ($user->launcher_id === null) {
             $user->name = Str::limit($launcherUser->first_name, 16, '');
         }
 

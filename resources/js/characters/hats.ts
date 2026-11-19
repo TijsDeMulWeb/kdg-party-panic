@@ -84,7 +84,8 @@ export function createHat(id: string, accent: number): THREE.Group | null {
         }
         const knot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), material);
         hat.add(knot);
-        hat.position.set(0.18, -0.05, 0.1);
+        hat.scale.setScalar(2);
+        hat.position.set(0.2, 0.12, 0.1);
         hat.rotation.z = 0.4;
     }
 
@@ -93,12 +94,15 @@ export function createHat(id: string, accent: number): THREE.Group | null {
             const angle = (index / 6) * Math.PI * 2;
             const petal = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), toonMaterial(palette.white));
             petal.position.set(Math.cos(angle) * 0.09, 0, Math.sin(angle) * 0.09);
-            petal.scale.set(1, 0.4, 1);
+            petal.scale.set(1, 0.5, 1);
+            addOutline(petal).scale.setScalar(1.12);
             hat.add(petal);
         }
         const centre = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), toonMaterial(palette.sun));
+        centre.position.y = 0.03;
         hat.add(centre);
-        hat.position.set(-0.16, -0.02, 0.08);
+        hat.scale.setScalar(2);
+        hat.position.set(-0.2, 0.12, 0.1);
         hat.rotation.z = 0.3;
     }
 

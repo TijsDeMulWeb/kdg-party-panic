@@ -73,16 +73,15 @@ class LauncherLoginTest extends TestCase
         $this->assertSame(16, mb_strlen(User::firstWhere('launcher_id', 7)->name));
     }
 
-    public function test_a_guest_keeps_their_history_when_linking_the_launcher(): void
+    public function test_a_guest_keeps_their_history_but_takes_the_launcher_name_when_linking(): void
     {
         $guest = $this->guest();
-        $originalName = $guest->name;
         $this->fakeLauncherLogin($this->launcherUser());
 
         $this->actingAs($guest)->get(route('launcher.callback'))->assertRedirect(route('home'));
 
         $this->assertSame($guest->id, User::firstWhere('launcher_id', 7)->id);
-        $this->assertSame($originalName, $guest->fresh()->name);
+        $this->assertSame('Tijs', $guest->fresh()->name);
         $this->assertDatabaseCount('users', 1);
     }
 
